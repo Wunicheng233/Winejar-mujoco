@@ -10,20 +10,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import mujoco
 import mujoco.viewer
 import numpy as np
 
+from mujoco_xarm6.production_demo.attachments import LeafAttachmentController
 from mujoco_xarm6.production_demo.clock import AnimationClock, smoothstep
-from mujoco_xarm6.production_demo.constants import OUTPUT_ROOT, REPO_ROOT, SCENE_PATH
+from mujoco_xarm6.production_demo.constants import OUTPUT_ROOT, SCENE_PATH
+from mujoco_xarm6.production_demo.models import JarSpec, JointPath, PathEvent
 from mujoco_xarm6.production_demo.motion import make_left_production_arm, make_right_tie_arm
-from mujoco_xarm6.production_demo.scene_ops import body_id, freejoint_qpos_addr, site_pos, yaw_to_quat
-from mujoco_xarm6.sim.xarm_sim_api import rpy_to_mat
+from mujoco_xarm6.production_demo.pathing import JointPathPlanner
+from mujoco_xarm6.production_demo.scene_ops import body_id, site_pos
 
 
 LEFT_JOINTS = tuple(f"left_joint{i}" for i in range(1, 7))
@@ -48,24 +47,6 @@ LEAF_PROFILE = np.array(
     [-0.0309, -0.3253, 0.0026, 0.3692, 0.0581, 0.0039, -0.0807, 0.3311, -0.1450, -0.0060],
     dtype=np.float64,
 )
-@dataclass(frozen=True)
-class JarSpec:
-    index: int
-    body: str
-    mouth_site: str
-    neck_site: str
-    top_leaf: str
-    bottom_leaf: str
-    top_pick_site: str
-    bottom_pick_site: str
-    top_suction_weld: str
-    bottom_suction_weld: str
-    top_table_weld: str
-    bottom_table_weld: str
-    top_mouth_weld: str
-    bottom_mouth_weld: str
-
-
 JARS = (
     JarSpec(
         1,
@@ -105,76 +86,6 @@ JARS = (
 )
 
 
-@dataclass
-class PathEvent:
-    point_index: int
-    label: str
-    callback: object
-
-
-@dataclass
-class LeafPlaceTransition:
-    jar: JarSpec
-    leaf: str
-    mouth_weld: str
-    start_bends: np.ndarray
-    center_in_jar: np.ndarray
-    elapsed: float = 0.0
-
-
-@dataclass
-class LeafRootAttachment:
-    leaf: str
-    parent_body: str
-    relative_pos: np.ndarray
-    relative_quat: np.ndarray
-
-
-@dataclass
-class JointPath:
-    name: str
-    joint_addrs: np.ndarray
-    dof_addrs: np.ndarray
-    points: list[np.ndarray]
-    durations: list[float]
-    events: list[PathEvent] = field(default_factory=list)
-    elapsed: float = 0.0
-    fired: set[int] = field(default_factory=set)
-    complete: bool = False
-
-    @property
-    def duration(self) -> float:
-        return float(sum(self.durations))
-
-    def advance(self, data: mujoco.MjData, dt: float):
-        if self.complete:
-            return
-        previous = self.elapsed
-        self.elapsed = min(self.duration, self.elapsed + dt)
-        cumulative = 0.0
-        for segment, duration in enumerate(self.durations):
-            next_cumulative = cumulative + duration
-            if self.elapsed <= next_cumulative or segment == len(self.durations) - 1:
-                alpha = (self.elapsed - cumulative) / max(duration, 1e-9)
-                # Linear velocity through intermediate samples avoids visible stops.
-                data.qpos[self.joint_addrs] = self.points[segment] + (self.points[segment + 1] - self.points[segment]) * alpha
-                data.qvel[self.dof_addrs] = 0.0
-                break
-            cumulative = next_cumulative
-        cumulative = 0.0
-        for point_index, duration in enumerate(self.durations, start=1):
-            cumulative += duration
-            if point_index not in self.fired and previous < cumulative <= self.elapsed + 1e-10:
-                self.fired.add(point_index)
-                for event in self.events:
-                    if event.point_index == point_index:
-                        event.callback()
-        if self.elapsed >= self.duration - 1e-10:
-            data.qpos[self.joint_addrs] = self.points[-1]
-            data.qvel[self.dof_addrs] = 0.0
-            self.complete = True
-
-
 class ProductionLine:
     def __init__(self, model: mujoco.MjModel, data: mujoco.MjData, clock: AnimationClock):
         self.model = model
@@ -193,11 +104,8 @@ class ProductionLine:
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
         self.leaf_lotus_contacts: set[str] = set()
-        self.active_leaf_places: list[LeafPlaceTransition] = []
-        self.leaf_root_attachments: dict[str, LeafRootAttachment] = {}
-        # Flexible joints are passive. Hold each completed placement at its
-        # intended profile so it cannot visibly rebound from spring forces.
-        self.placed_leaf_profiles: dict[str, np.ndarray] = {}
+        self.paths = JointPathPlanner(model, data)
+        self.leaves = LeafAttachmentController(model, data, clock)
         self.tie_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
@@ -226,10 +134,7 @@ class ProductionLine:
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
         self.leaf_lotus_contacts.clear()
-        self.active_leaf_places.clear()
-        self.leaf_root_attachments.clear()
-        self.placed_leaf_profiles.clear()
-        self.clock.clear_joint_hold()
+        self.leaves.reset()
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
@@ -242,199 +147,36 @@ class ProductionLine:
             for weld in (jar.top_suction_weld, jar.bottom_suction_weld, jar.top_mouth_weld, jar.bottom_mouth_weld):
                 self.data.eq_active[self.model.equality(weld).id] = 0
             for weld in (jar.top_table_weld, jar.bottom_table_weld):
-                self._activate_weld(weld, "left_material_table", f"{jar.top_leaf if weld == jar.top_table_weld else jar.bottom_leaf}_seg_05")
+                leaf = jar.top_leaf if weld == jar.top_table_weld else jar.bottom_leaf
+                self.leaves.activate_weld(weld, "left_material_table", f"{leaf}_seg_05")
         self.data.qvel[:] = 0
         mujoco.mj_forward(self.model, self.data)
-
-    def _activate_weld(self, equality: str, parent_body: str, child_body: str):
-        eq_id = self.model.equality(equality).id
-        parent_id = self.model.body(parent_body).id
-        child_id = self.model.body(child_body).id
-        parent_pos = self.data.xpos[parent_id].copy()
-        child_pos = self.data.xpos[child_id].copy()
-        parent_rot = self.data.xmat[parent_id].reshape(3, 3).copy()
-        child_rot = self.data.xmat[child_id].reshape(3, 3).copy()
-        relative_pos = parent_rot.T @ (child_pos - parent_pos)
-        relative_rot = parent_rot.T @ child_rot
-        relative_quat = np.zeros(4, dtype=np.float64)
-        mujoco.mju_mat2Quat(relative_quat, relative_rot.reshape(-1))
-        self.model.eq_data[eq_id, 3:6] = relative_pos
-        self.model.eq_data[eq_id, 6:10] = relative_quat
-        self.model.eq_data[eq_id, 10] = 1.0
-        self.data.eq_active[eq_id] = 1
-
-    def _leaf_center(self, leaf: str) -> np.ndarray:
-        return self.data.site_xpos[self.model.site(f"{leaf}_center_site").id].copy()
-
-    def _capture_leaf_root_attachment(self, leaf: str, parent_body: str):
-        """Record the leaf free-root pose relative to its rigid parent."""
-        parent_id = self.model.body(parent_body).id
-        parent_pos = self.data.xpos[parent_id].copy()
-        parent_rot = self.data.xmat[parent_id].reshape(3, 3).copy()
-        qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
-        root_pos = self.data.qpos[qposadr : qposadr + 3].copy()
-        root_quat = self.data.qpos[qposadr + 3 : qposadr + 7].copy()
-        root_rot = np.zeros(9, dtype=np.float64)
-        mujoco.mju_quat2Mat(root_rot, root_quat)
-        relative_quat = np.zeros(4, dtype=np.float64)
-        mujoco.mju_mat2Quat(relative_quat, (parent_rot.T @ root_rot.reshape(3, 3)).reshape(-1))
-        self.leaf_root_attachments[leaf] = LeafRootAttachment(
-            leaf=leaf,
-            parent_body=parent_body,
-            relative_pos=parent_rot.T @ (root_pos - parent_pos),
-            relative_quat=relative_quat,
-        )
-
-    def _attach_leaf_root(self, leaf: str, parent_body: str, weld: str, child_body: str):
-        self._activate_weld(weld, parent_body, child_body)
-        self._capture_leaf_root_attachment(leaf, parent_body)
-
-    def _sync_leaf_root_attachments(self):
-        """Rigidly follow parent motion while preserving flexible bend joints."""
-        for attachment in self.leaf_root_attachments.values():
-            parent_id = self.model.body(attachment.parent_body).id
-            parent_pos = self.data.xpos[parent_id]
-            parent_rot = self.data.xmat[parent_id].reshape(3, 3)
-            relative_rot = np.zeros(9, dtype=np.float64)
-            mujoco.mju_quat2Mat(relative_rot, attachment.relative_quat)
-            root_quat = np.zeros(4, dtype=np.float64)
-            mujoco.mju_mat2Quat(root_quat, (parent_rot @ relative_rot.reshape(3, 3)).reshape(-1))
-            joint = self.model.joint(f"{attachment.leaf}_freejoint")
-            qposadr = int(joint.qposadr[0])
-            dofadr = int(joint.dofadr[0])
-            self.data.qpos[qposadr : qposadr + 3] = parent_pos + parent_rot @ attachment.relative_pos
-            self.data.qpos[qposadr + 3 : qposadr + 7] = root_quat
-            self.data.qvel[dofadr : dofadr + 6] = 0.0
-        if self.leaf_root_attachments:
-            mujoco.mj_forward(self.model, self.data)
 
     def _attach(self, jar: JarSpec, leaf: str):
         is_top = leaf == jar.top_leaf
         table_weld = jar.top_table_weld if is_top else jar.bottom_table_weld
         suction_weld = jar.top_suction_weld if is_top else jar.bottom_suction_weld
-        self.data.eq_active[self.model.equality(table_weld).id] = 0
-        self._attach_leaf_root(leaf, "left_vacuum_end_effector", suction_weld, f"{leaf}_seg_05")
+        self.leaves.deactivate_weld(table_weld)
+        self.leaves.attach_root(leaf, "left_vacuum_end_effector", suction_weld)
         self.actions.append({"label": f"jar {jar.index} attach {'top' if is_top else 'bottom'} leaf", "code": 0})
 
     def _release(self, jar: JarSpec, leaf: str):
         is_top = leaf == jar.top_leaf
         suction_weld = jar.top_suction_weld if is_top else jar.bottom_suction_weld
         mouth_weld = jar.top_mouth_weld if is_top else jar.bottom_mouth_weld
-        self.data.eq_active[self.model.equality(suction_weld).id] = 0
+        self.leaves.deactivate_weld(suction_weld)
         mujoco.mj_forward(self.model, self.data)
-        self._attach_leaf_root(leaf, jar.body, mouth_weld, f"{leaf}_seg_05")
-        jar_id = self.model.body(jar.body).id
-        jar_pos = self.data.xpos[jar_id].copy()
-        jar_rot = self.data.xmat[jar_id].reshape(3, 3).copy()
-        self.active_leaf_places.append(
-            LeafPlaceTransition(
-                jar=jar,
-                leaf=leaf,
-                mouth_weld=mouth_weld,
-                start_bends=np.array(
-                    [self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] for segment in range(1, 11)],
-                    dtype=np.float64,
-                ),
-                center_in_jar=jar_rot.T @ (self._leaf_center(leaf) - jar_pos),
-            )
-        )
+        self.leaves.begin_placement(jar, leaf, mouth_weld)
         self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
 
-    def _refresh_placed_leaf_hold(self):
-        """Hold completed flexible placements without constraining arm joints."""
-        if not self.placed_leaf_profiles:
-            self.clock.clear_joint_hold()
-            return
-        qpos_addrs: list[int] = []
-        dof_addrs: list[int] = []
-        values: list[float] = []
-        for leaf, profile in self.placed_leaf_profiles.items():
-            for segment, bend in enumerate(profile, start=1):
-                joint = self.model.joint(f"{leaf}_bend_{segment:02d}")
-                qpos_addrs.append(int(joint.qposadr[0]))
-                dof_addrs.append(int(joint.dofadr[0]))
-                values.append(float(bend))
-        self.clock.hold_joints(
-            np.asarray(qpos_addrs, dtype=int),
-            np.asarray(values, dtype=np.float64),
-            np.asarray(dof_addrs, dtype=int),
-        )
-
     def _advance_leaf_placements(self, dt: float):
-        completed: list[LeafPlaceTransition] = []
-        for transition in self.active_leaf_places:
-            transition.elapsed = min(LEAF_PLACE_TRANSITION_SECONDS, transition.elapsed + dt)
-            alpha = smoothstep(transition.elapsed / LEAF_PLACE_TRANSITION_SECONDS)
-            profile = transition.start_bends + (LEAF_PROFILE - transition.start_bends) * alpha
-            for segment, bend in enumerate(profile, start=1):
-                self.data.qpos[self.model.joint(f"{transition.leaf}_bend_{segment:02d}").qposadr[0]] = bend
-            self.data.qvel[:] = 0.0
-            mujoco.mj_forward(self.model, self.data)
-            jar_id = self.model.body(transition.jar.body).id
-            jar_pos = self.data.xpos[jar_id]
-            jar_rot = self.data.xmat[jar_id].reshape(3, 3)
-            target_center = jar_pos + jar_rot @ transition.center_in_jar
-            qposadr = freejoint_qpos_addr(self.model, f"{transition.leaf}_freejoint")
-            self.data.qpos[qposadr : qposadr + 3] += target_center - self._leaf_center(transition.leaf)
-            self.data.qvel[:] = 0.0
-            mujoco.mj_forward(self.model, self.data)
-            self._capture_leaf_root_attachment(transition.leaf, transition.jar.body)
-            if transition.elapsed >= LEAF_PLACE_TRANSITION_SECONDS:
-                completed.append(transition)
+        completed = self.leaves.advance_placements(dt, LEAF_PROFILE, LEAF_PLACE_TRANSITION_SECONDS)
         for transition in completed:
-            self.active_leaf_places.remove(transition)
-            self.placed_leaf_profiles[transition.leaf] = LEAF_PROFILE.copy()
             if transition.leaf == transition.jar.bottom_leaf:
                 self.release_stack_gaps_mm[str(transition.jar.index)] = float(
-                    (self._leaf_center(transition.jar.bottom_leaf)[2] - self._leaf_center(transition.jar.top_leaf)[2]) * 1000.0
+                    (self.leaves.leaf_center(transition.jar.bottom_leaf)[2] - self.leaves.leaf_center(transition.jar.top_leaf)[2]) * 1000.0
                 )
             self.actions.append({"label": f"jar {transition.jar.index} complete flexible leaf placement", "code": 0})
-        if completed:
-            self._refresh_placed_leaf_hold()
-
-    @staticmethod
-    def _pose(point_m: np.ndarray, yaw_deg: float) -> tuple[np.ndarray, np.ndarray]:
-        return point_m, rpy_to_mat(180.0, 0.0, yaw_deg)
-
-    def _solve(self, arm, joint_addrs: np.ndarray, seed_q: np.ndarray, point_m: np.ndarray, yaw_deg: float) -> np.ndarray:
-        original = self.data.qpos[joint_addrs].copy()
-        self.data.qpos[joint_addrs] = seed_q
-        self.data.qvel[:] = 0
-        mujoco.mj_forward(self.model, self.data)
-        position, rotation = self._pose(point_m, yaw_deg)
-        solved = arm._solve_ik(position, rotation)
-        self.data.qpos[joint_addrs] = original
-        self.data.qvel[:] = 0
-        mujoco.mj_forward(self.model, self.data)
-        if solved is None:
-            raise RuntimeError(f"IK failed for {arm.tcp_site_name} at {point_m.tolist()}, yaw={yaw_deg}")
-        return solved
-
-    def _cartesian_points(self, start: np.ndarray, target: np.ndarray, start_yaw: float, target_yaw: float) -> list[tuple[np.ndarray, float]]:
-        distance = float(np.linalg.norm(target - start))
-        yaw_delta = abs(((target_yaw - start_yaw + 180.0) % 360.0) - 180.0)
-        count = max(1, int(math.ceil(distance / 0.075)), int(math.ceil(yaw_delta / 22.5)))
-        result = []
-        for index in range(1, count + 1):
-            alpha = index / count
-            point = start + (target - start) * alpha
-            yaw = start_yaw + (((target_yaw - start_yaw + 180.0) % 360.0) - 180.0) * alpha
-            result.append((point, yaw))
-        return result
-
-    def _build_path(self, name: str, arm, joint_addrs: np.ndarray, dof_addrs: np.ndarray, start_q: np.ndarray, targets: list[tuple[np.ndarray, float]], speed: float, events: list[PathEvent]) -> JointPath:
-        points = [start_q.copy()]
-        current_q = start_q.copy()
-        previous_tcp = self.data.site_xpos[arm.tcp_site_id].copy()
-        previous_yaw = 0.0
-        for target, yaw in targets:
-            for point, point_yaw in self._cartesian_points(previous_tcp, target, previous_yaw, yaw):
-                current_q = self._solve(arm, joint_addrs, current_q, point, point_yaw)
-                points.append(current_q)
-            previous_tcp = target.copy()
-            previous_yaw = yaw
-        durations = [max(0.025, float(np.max(np.abs(b - a))) / max(speed, 1e-6)) for a, b in zip(points, points[1:])]
-        return JointPath(name, joint_addrs, dof_addrs, points, durations, events)
 
     def _leaf_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.left_addrs].copy()
@@ -470,7 +212,7 @@ class ProductionLine:
         append(bottom_place + np.array([0.0, 0.0, 0.025]), 90.0)
         append(np.array([-0.22, 0.52, SAFE_Z_M]), 0.0)
 
-        path = self._build_path(f"left load jar {jar.index}", self.left, self.left_addrs, self.left_dofs, start_q, sequence, 11.0, [])
+        path = self.paths.build(f"left load jar {jar.index}", self.left, self.left_addrs, self.left_dofs, start_q, sequence, 11.0)
         # Build endpoint indices exactly from Cartesian subdivision counts.
         path.events = []
         event_ordinals = {2: events[0], 6: events[1], 10: events[2], 14: events[3]}
@@ -478,7 +220,7 @@ class ProductionLine:
         previous_tcp = self.data.site_xpos[self.left.tcp_site_id].copy()
         previous_yaw = 0.0
         for index, (target, yaw) in enumerate(sequence):
-            point_index += len(self._cartesian_points(previous_tcp, target, previous_yaw, yaw))
+            point_index += len(self.paths.cartesian_samples(previous_tcp, target, previous_yaw, yaw))
             if index in event_ordinals:
                 event = event_ordinals[index]
                 path.events.append(PathEvent(point_index, event.label, event.callback))
@@ -502,14 +244,14 @@ class ProductionLine:
             (ring_safe + ring_offset, 90.0),
             (station_standby, 90.0),
         ]
-        path = self._build_path(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 11.0, [])
+        path = self.paths.build(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 11.0)
         # Work out exact target endpoint indices after Cartesian subdivision.
         point_index = 0
         previous_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
         previous_yaw = 0.0
         endpoint_indices: list[int] = []
         for target, yaw in targets:
-            count = len(self._cartesian_points(previous_tcp, target, previous_yaw, yaw))
+            count = len(self.paths.cartesian_samples(previous_tcp, target, previous_yaw, yaw))
             point_index += count
             endpoint_indices.append(point_index)
             previous_tcp = target
@@ -520,18 +262,18 @@ class ProductionLine:
         path.events.append(PathEvent(overhead_point, f"jar {jar.index} tie hold", lambda: self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})))
         return path
 
-    def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None, update=None):
+    def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None):
         dt = self.model.opt.timestep
         if left_path is not None:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
         self._advance_leaf_placements(dt)
-        self._sync_leaf_root_attachments()
+        self.leaves.sync_roots()
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:
             self._audit_tie_leaf_contacts()
-        self.clock.step(1, after_step=self._sync_leaf_root_attachments)
+        self.clock.step(1, after_step=self.leaves.sync_roots)
 
     def _audit_tie_leaf_contacts(self):
         """Record every physical contact between the tie gun and leaf stack.
@@ -614,16 +356,14 @@ class ProductionLine:
         """Remove a completed workpiece and its attached leaves beyond the outfeed."""
         self.model.body_pos[body_id(self.model, jar.body)] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
         for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
-            self.data.eq_active[self.model.equality(mouth_weld).id] = 0
-            self.placed_leaf_profiles.pop(leaf, None)
-            self.leaf_root_attachments.pop(leaf, None)
+            self.leaves.deactivate_weld(mouth_weld)
+            self.leaves.forget(leaf)
             joint = self.model.joint(f"{leaf}_freejoint")
             qposadr = int(joint.qposadr[0])
             dofadr = int(joint.dofadr[0])
             self.data.qpos[qposadr : qposadr + 3] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
             self.data.qvel[dofadr : dofadr + 6] = 0.0
         self.exited_jars.add(jar.index)
-        self._refresh_placed_leaf_hold()
         mujoco.mj_forward(self.model, self.data)
 
     def run(self):
@@ -646,8 +386,8 @@ class ProductionLine:
         }
         leaf_heights = {
             str(jar.index): {
-                "top_z_m": float(self._leaf_center(jar.top_leaf)[2]),
-                "bottom_z_m": float(self._leaf_center(jar.bottom_leaf)[2]),
+                "top_z_m": float(self.leaves.leaf_center(jar.top_leaf)[2]),
+                "bottom_z_m": float(self.leaves.leaf_center(jar.bottom_leaf)[2]),
             }
             for jar in JARS
         }
