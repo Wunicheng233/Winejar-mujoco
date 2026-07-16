@@ -170,6 +170,8 @@ class ProductionLine:
         self.left_dofs = np.array([model.joint(name).dofadr[0] for name in LEFT_JOINTS], dtype=int)
         self.right_dofs = np.array([model.joint(name).dofadr[0] for name in RIGHT_JOINTS], dtype=int)
         self.actions: list[dict] = []
+        self.exited_jars: set[int] = set()
+        self.release_stack_gaps_mm: dict[str, float] = {}
         self.marker_starts = {
             geom_id: model.geom_pos[geom_id].copy()
             for geom_id in range(model.ngeom)
@@ -177,6 +179,8 @@ class ProductionLine:
         }
 
     def reset(self):
+        self.exited_jars.clear()
+        self.release_stack_gaps_mm.clear()
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
@@ -241,6 +245,10 @@ class ProductionLine:
         self.data.eq_active[self.model.equality(suction_weld).id] = 0
         mujoco.mj_forward(self.model, self.data)
         self._shape_leaf(leaf, mouth_weld, jar.body)
+        if not is_top:
+            self.release_stack_gaps_mm[str(jar.index)] = float(
+                (self._leaf_center(jar.bottom_leaf)[2] - self._leaf_center(jar.top_leaf)[2]) * 1000.0
+            )
         self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
 
     @staticmethod
@@ -421,7 +429,23 @@ class ProductionLine:
                 pos[0] = self._belt_x(float(start_pos[0] + displacement))
                 self.model.geom_pos[geom_id] = pos
             self._step()
+        for index, (_from_x, to_x) in moves.items():
+            if abs(to_x - EXIT_X) < 1e-9:
+                self._hide_exited_jar(JARS[index - 1])
         self.actions.append({"label": label, "code": 0, "duration_s": INDEX_SECONDS, "belt_to_jar_speed_ratio": 1.0})
+
+    def _hide_exited_jar(self, jar: JarSpec):
+        """Remove a completed workpiece and its attached leaves beyond the outfeed."""
+        self.model.body_pos[body_id(self.model, jar.body)] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
+        for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
+            self.data.eq_active[self.model.equality(mouth_weld).id] = 0
+            joint = self.model.joint(f"{leaf}_freejoint")
+            qposadr = int(joint.qposadr[0])
+            dofadr = int(joint.dofadr[0])
+            self.data.qpos[qposadr : qposadr + 3] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
+            self.data.qvel[dofadr : dofadr + 6] = 0.0
+        self.exited_jars.add(jar.index)
+        mujoco.mj_forward(self.model, self.data)
 
     def run(self):
         self.reset()
@@ -437,7 +461,10 @@ class ProductionLine:
         return self.diagnostics()
 
     def diagnostics(self) -> dict:
-        jar_x = {str(jar.index): float(self.model.body_pos[body_id(self.model, jar.body)][0]) for jar in JARS}
+        jar_x = {
+            str(jar.index): None if jar.index in self.exited_jars else float(self.model.body_pos[body_id(self.model, jar.body)][0])
+            for jar in JARS
+        }
         leaf_heights = {
             str(jar.index): {
                 "top_z_m": float(self._leaf_center(jar.top_leaf)[2]),
@@ -448,7 +475,9 @@ class ProductionLine:
         return {
             "flow": "three_jar_parallel_loading_and_tying",
             "jar_x_m": jar_x,
+            "exited_jars": sorted(self.exited_jars),
             "leaf_heights_m": leaf_heights,
+            "release_stack_gaps_mm": self.release_stack_gaps_mm,
             "actions": self.actions,
             "parallel_stations": [
                 {"left": "load jar 2", "right": "tie jar 1"},

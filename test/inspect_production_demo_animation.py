@@ -40,9 +40,10 @@ def main() -> None:
         raise AssertionError("The revised line must not load the removed paper label")
     if result["tie_station_x_m"] - result["load_station_x_m"] < 0.45:
         raise AssertionError("Tie-gun station should be visibly downstream of the loading station")
-    for index, x in result["jar_x_m"].items():
-        if x < 0.90:
-            raise AssertionError(f"Jar {index} did not exit the conveyor: x={x}")
+    if result.get("exited_jars") != [1, 2, 3]:
+        raise AssertionError(f"Completed jars must disappear at the outfeed: {result.get('exited_jars')}")
+    if any(x is not None for x in result["jar_x_m"].values()):
+        raise AssertionError(f"Completed jars should be hidden after outfeed: {result['jar_x_m']}")
 
     labels = [entry["label"] for entry in result["actions"]]
     for index in (1, 2, 3):
@@ -63,8 +64,10 @@ def main() -> None:
     if any(abs(entry["hold_seconds"] - 1.0) > 0.02 for entry in holds):
         raise AssertionError(f"Tie-gun hold should be one second: {holds}")
 
-    for index, heights in result["leaf_heights_m"].items():
-        gap_mm = (heights["bottom_z_m"] - heights["top_z_m"]) * 1000.0
+    stack_gaps = result.get("release_stack_gaps_mm", {})
+    if sorted(stack_gaps) != ["1", "2", "3"]:
+        raise AssertionError(f"Missing release stack diagnostics: {stack_gaps}")
+    for index, gap_mm in stack_gaps.items():
         if not 4.0 <= gap_mm <= 35.0:
             raise AssertionError(f"Jar {index} leaf stack has an unsafe visual gap/intersection: {gap_mm:.1f} mm")
     print("Three-jar parallel production animation checks OK")
