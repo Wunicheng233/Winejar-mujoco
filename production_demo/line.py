@@ -118,8 +118,16 @@ class LeafPlaceTransition:
     leaf: str
     mouth_weld: str
     start_bends: np.ndarray
-    center: np.ndarray
+    center_in_jar: np.ndarray
     elapsed: float = 0.0
+
+
+@dataclass
+class LeafRootAttachment:
+    leaf: str
+    parent_body: str
+    relative_pos: np.ndarray
+    relative_quat: np.ndarray
 
 
 @dataclass
@@ -186,6 +194,7 @@ class ProductionLine:
         self.tie_leaf_contact_samples: list[dict] = []
         self.leaf_lotus_contacts: set[str] = set()
         self.active_leaf_places: list[LeafPlaceTransition] = []
+        self.leaf_root_attachments: dict[str, LeafRootAttachment] = {}
         # Flexible joints are passive. Hold each completed placement at its
         # intended profile so it cannot visibly rebound from spring forces.
         self.placed_leaf_profiles: dict[str, np.ndarray] = {}
@@ -218,6 +227,7 @@ class ProductionLine:
         self.tie_leaf_contact_samples.clear()
         self.leaf_lotus_contacts.clear()
         self.active_leaf_places.clear()
+        self.leaf_root_attachments.clear()
         self.placed_leaf_profiles.clear()
         self.clock.clear_joint_hold()
         mujoco.mj_resetData(self.model, self.data)
@@ -256,12 +266,54 @@ class ProductionLine:
     def _leaf_center(self, leaf: str) -> np.ndarray:
         return self.data.site_xpos[self.model.site(f"{leaf}_center_site").id].copy()
 
+    def _capture_leaf_root_attachment(self, leaf: str, parent_body: str):
+        """Record the leaf free-root pose relative to its rigid parent."""
+        parent_id = self.model.body(parent_body).id
+        parent_pos = self.data.xpos[parent_id].copy()
+        parent_rot = self.data.xmat[parent_id].reshape(3, 3).copy()
+        qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
+        root_pos = self.data.qpos[qposadr : qposadr + 3].copy()
+        root_quat = self.data.qpos[qposadr + 3 : qposadr + 7].copy()
+        root_rot = np.zeros(9, dtype=np.float64)
+        mujoco.mju_quat2Mat(root_rot, root_quat)
+        relative_quat = np.zeros(4, dtype=np.float64)
+        mujoco.mju_mat2Quat(relative_quat, (parent_rot.T @ root_rot.reshape(3, 3)).reshape(-1))
+        self.leaf_root_attachments[leaf] = LeafRootAttachment(
+            leaf=leaf,
+            parent_body=parent_body,
+            relative_pos=parent_rot.T @ (root_pos - parent_pos),
+            relative_quat=relative_quat,
+        )
+
+    def _attach_leaf_root(self, leaf: str, parent_body: str, weld: str, child_body: str):
+        self._activate_weld(weld, parent_body, child_body)
+        self._capture_leaf_root_attachment(leaf, parent_body)
+
+    def _sync_leaf_root_attachments(self):
+        """Rigidly follow parent motion while preserving flexible bend joints."""
+        for attachment in self.leaf_root_attachments.values():
+            parent_id = self.model.body(attachment.parent_body).id
+            parent_pos = self.data.xpos[parent_id]
+            parent_rot = self.data.xmat[parent_id].reshape(3, 3)
+            relative_rot = np.zeros(9, dtype=np.float64)
+            mujoco.mju_quat2Mat(relative_rot, attachment.relative_quat)
+            root_quat = np.zeros(4, dtype=np.float64)
+            mujoco.mju_mat2Quat(root_quat, (parent_rot @ relative_rot.reshape(3, 3)).reshape(-1))
+            joint = self.model.joint(f"{attachment.leaf}_freejoint")
+            qposadr = int(joint.qposadr[0])
+            dofadr = int(joint.dofadr[0])
+            self.data.qpos[qposadr : qposadr + 3] = parent_pos + parent_rot @ attachment.relative_pos
+            self.data.qpos[qposadr + 3 : qposadr + 7] = root_quat
+            self.data.qvel[dofadr : dofadr + 6] = 0.0
+        if self.leaf_root_attachments:
+            mujoco.mj_forward(self.model, self.data)
+
     def _attach(self, jar: JarSpec, leaf: str):
         is_top = leaf == jar.top_leaf
         table_weld = jar.top_table_weld if is_top else jar.bottom_table_weld
         suction_weld = jar.top_suction_weld if is_top else jar.bottom_suction_weld
         self.data.eq_active[self.model.equality(table_weld).id] = 0
-        self._activate_weld(suction_weld, "left_vacuum_end_effector", f"{leaf}_seg_05")
+        self._attach_leaf_root(leaf, "left_vacuum_end_effector", suction_weld, f"{leaf}_seg_05")
         self.actions.append({"label": f"jar {jar.index} attach {'top' if is_top else 'bottom'} leaf", "code": 0})
 
     def _release(self, jar: JarSpec, leaf: str):
@@ -270,7 +322,10 @@ class ProductionLine:
         mouth_weld = jar.top_mouth_weld if is_top else jar.bottom_mouth_weld
         self.data.eq_active[self.model.equality(suction_weld).id] = 0
         mujoco.mj_forward(self.model, self.data)
-        self._activate_weld(mouth_weld, jar.body, f"{leaf}_seg_05")
+        self._attach_leaf_root(leaf, jar.body, mouth_weld, f"{leaf}_seg_05")
+        jar_id = self.model.body(jar.body).id
+        jar_pos = self.data.xpos[jar_id].copy()
+        jar_rot = self.data.xmat[jar_id].reshape(3, 3).copy()
         self.active_leaf_places.append(
             LeafPlaceTransition(
                 jar=jar,
@@ -280,7 +335,7 @@ class ProductionLine:
                     [self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] for segment in range(1, 11)],
                     dtype=np.float64,
                 ),
-                center=self._leaf_center(leaf),
+                center_in_jar=jar_rot.T @ (self._leaf_center(leaf) - jar_pos),
             )
         )
         self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
@@ -315,11 +370,15 @@ class ProductionLine:
                 self.data.qpos[self.model.joint(f"{transition.leaf}_bend_{segment:02d}").qposadr[0]] = bend
             self.data.qvel[:] = 0.0
             mujoco.mj_forward(self.model, self.data)
+            jar_id = self.model.body(transition.jar.body).id
+            jar_pos = self.data.xpos[jar_id]
+            jar_rot = self.data.xmat[jar_id].reshape(3, 3)
+            target_center = jar_pos + jar_rot @ transition.center_in_jar
             qposadr = freejoint_qpos_addr(self.model, f"{transition.leaf}_freejoint")
-            self.data.qpos[qposadr : qposadr + 3] += transition.center - self._leaf_center(transition.leaf)
+            self.data.qpos[qposadr : qposadr + 3] += target_center - self._leaf_center(transition.leaf)
             self.data.qvel[:] = 0.0
             mujoco.mj_forward(self.model, self.data)
-            self._activate_weld(transition.mouth_weld, transition.jar.body, f"{transition.leaf}_seg_05")
+            self._capture_leaf_root_attachment(transition.leaf, transition.jar.body)
             if transition.elapsed >= LEAF_PLACE_TRANSITION_SECONDS:
                 completed.append(transition)
         for transition in completed:
@@ -468,10 +527,11 @@ class ProductionLine:
         if right_path is not None:
             right_path.advance(self.data, dt)
         self._advance_leaf_placements(dt)
+        self._sync_leaf_root_attachments()
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:
             self._audit_tie_leaf_contacts()
-        self.clock.step(1)
+        self.clock.step(1, after_step=self._sync_leaf_root_attachments)
 
     def _audit_tie_leaf_contacts(self):
         """Record every physical contact between the tie gun and leaf stack.
@@ -530,10 +590,6 @@ class ProductionLine:
                 self.model.body_pos[body][0] = from_x
         mujoco.mj_forward(self.model, self.data)
         starts = {index: self.model.body_pos[body_id(self.model, JARS[index - 1].body)].copy() for index in moves}
-        mouth_leaf_roots = {
-            index: self._mouth_leaf_roots(JARS[index - 1])
-            for index in moves
-        }
         marker_start = {geom_id: self.model.geom_pos[geom_id].copy() for geom_id in self.marker_starts}
         steps = max(1, int(INDEX_SECONDS / self.model.opt.timestep))
         for step in range(steps):
@@ -544,47 +600,15 @@ class ProductionLine:
                 pos[0] = starts[index][0] + (to_x - starts[index][0]) * alpha
                 displacement = float(pos[0] - starts[index][0])
                 self.model.body_pos[body_id(self.model, JARS[index - 1].body)] = pos
-                self._sync_mouth_leaves_with_jar(JARS[index - 1], mouth_leaf_roots[index], pos - starts[index])
             for geom_id, start_pos in marker_start.items():
                 pos = start_pos.copy()
                 pos[0] = self._belt_x(float(start_pos[0] + displacement))
                 self.model.geom_pos[geom_id] = pos
             self._step()
-            # Contact resolution can pull a lower leaf root away from the
-            # kinematically indexed jar. Restore its exact jar-relative pose
-            # before rendering the next conveyor frame.
-            for index, roots in mouth_leaf_roots.items():
-                body_pos = self.model.body_pos[body_id(self.model, JARS[index - 1].body)]
-                self._sync_mouth_leaves_with_jar(JARS[index - 1], roots, body_pos - starts[index])
-            mujoco.mj_forward(self.model, self.data)
         for index, (_from_x, to_x) in moves.items():
             if abs(to_x - EXIT_X) < 1e-9:
                 self._hide_exited_jar(JARS[index - 1])
         self.actions.append({"label": label, "code": 0, "duration_s": INDEX_SECONDS, "belt_to_jar_speed_ratio": 1.0})
-
-    def _mouth_leaf_roots(self, jar: JarSpec) -> dict[str, np.ndarray]:
-        roots: dict[str, np.ndarray] = {}
-        for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
-            if self.data.eq_active[self.model.equality(mouth_weld).id]:
-                qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
-                roots[leaf] = self.data.qpos[qposadr : qposadr + 3].copy()
-        return roots
-
-    def _sync_mouth_leaves_with_jar(self, jar: JarSpec, roots: dict[str, np.ndarray], displacement: np.ndarray):
-        """Keep welded leaf roots at their exact jar-relative conveyor pose.
-
-        Conveyor indexing edits the jar model pose directly. Equality
-        constraints alone then lag one or more physics steps behind the jar,
-        especially for the lower leaf pressed against the upper one. Moving the
-        free-joint root by the same incremental conveyor displacement preserves
-        the weld relation while leaving every bend joint and collision response
-        under MuJoCo physics.
-        """
-        if not roots:
-            return
-        for leaf, root in roots.items():
-            qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
-            self.data.qpos[qposadr : qposadr + 3] = root + displacement
 
     def _hide_exited_jar(self, jar: JarSpec):
         """Remove a completed workpiece and its attached leaves beyond the outfeed."""
@@ -592,6 +616,7 @@ class ProductionLine:
         for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
             self.data.eq_active[self.model.equality(mouth_weld).id] = 0
             self.placed_leaf_profiles.pop(leaf, None)
+            self.leaf_root_attachments.pop(leaf, None)
             joint = self.model.joint(f"{leaf}_freejoint")
             qposadr = int(joint.qposadr[0])
             dofadr = int(joint.dofadr[0])

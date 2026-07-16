@@ -37,13 +37,15 @@ class AnimationClock:
         self.held_dof_addrs = None
         self.held_joint_values = None
 
-    def step(self, steps: int = 1):
+    def step(self, steps: int = 1, after_step=None):
         for _ in range(max(1, steps)):
             mujoco.mj_step(self.model, self.data)
             if self.held_joint_addrs is not None and self.held_dof_addrs is not None and self.held_joint_values is not None:
                 self.data.qpos[self.held_joint_addrs] = self.held_joint_values
                 self.data.qvel[self.held_dof_addrs] = 0
                 mujoco.mj_forward(self.model, self.data)
+            if after_step is not None:
+                after_step()
             if self.viewer is not None:
                 self.viewer.sync()
             if self.realtime:
