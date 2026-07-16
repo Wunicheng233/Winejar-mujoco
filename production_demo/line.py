@@ -38,9 +38,9 @@ EXIT_X = 0.94
 BELT_MIN_X = -0.88
 BELT_MAX_X = 0.88
 BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
-INDEX_SECONDS = 2.2
-TIE_HOLD_SECONDS = 1.0
-TIE_GATHER_SECONDS = 0.70
+INDEX_SECONDS = 1.6
+TIE_HOLD_SECONDS = 0.5
+LEAF_PLACE_TRANSITION_SECONDS = 0.45
 # This is above the 0.62 m mouth-clearance envelope while remaining inside the
 # xArm's verified reachable workspace over the material table.
 SAFE_Z_M = 0.660
@@ -48,12 +48,6 @@ LEAF_PROFILE = np.array(
     [-0.0309, -0.3253, 0.0026, 0.3692, 0.0581, 0.0039, -0.0807, 0.3311, -0.1450, -0.0060],
     dtype=np.float64,
 )
-# The centered two-branch leaf model uses matching bend values on its left and
-# right branches. Keep this deliberately shallow: the ring gathers the four
-# ends around the neck, it must not fold the leaf stack down into the jar.
-TIE_LEAF_PROFILE = np.full(10, 0.12, dtype=np.float64)
-
-
 @dataclass(frozen=True)
 class JarSpec:
     index: int
@@ -119,10 +113,12 @@ class PathEvent:
 
 
 @dataclass
-class LeafGatherTransition:
+class LeafPlaceTransition:
     jar: JarSpec
-    start_bends: dict[str, np.ndarray]
-    centers: dict[str, np.ndarray]
+    leaf: str
+    mouth_weld: str
+    start_bends: np.ndarray
+    center: np.ndarray
     elapsed: float = 0.0
 
 
@@ -189,11 +185,10 @@ class ProductionLine:
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
         self.leaf_lotus_contacts: set[str] = set()
-        self.active_tie_gather: LeafGatherTransition | None = None
-        # Flexible joints are passive. Once a tie operation is complete, keep
-        # its gathered shape until that jar leaves the line instead of letting
-        # the leaf springs visibly rebound open.
-        self.gathered_leaf_profiles: dict[str, np.ndarray] = {}
+        self.active_leaf_places: list[LeafPlaceTransition] = []
+        # Flexible joints are passive. Hold each completed placement at its
+        # intended profile so it cannot visibly rebound from spring forces.
+        self.placed_leaf_profiles: dict[str, np.ndarray] = {}
         self.tie_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
@@ -222,8 +217,8 @@ class ProductionLine:
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
         self.leaf_lotus_contacts.clear()
-        self.active_tie_gather = None
-        self.gathered_leaf_profiles.clear()
+        self.active_leaf_places.clear()
+        self.placed_leaf_profiles.clear()
         self.clock.clear_joint_hold()
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
@@ -261,19 +256,6 @@ class ProductionLine:
     def _leaf_center(self, leaf: str) -> np.ndarray:
         return self.data.site_xpos[self.model.site(f"{leaf}_center_site").id].copy()
 
-    def _shape_leaf(self, leaf: str, mouth_weld: str, jar_body: str, profile: np.ndarray = LEAF_PROFILE):
-        center_before = self._leaf_center(leaf)
-        for segment, bend in enumerate(profile, start=1):
-            self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] = bend
-        self.data.qvel[:] = 0
-        mujoco.mj_forward(self.model, self.data)
-        center_after = self._leaf_center(leaf)
-        address = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
-        self.data.qpos[address : address + 3] += center_before - center_after
-        self.data.qvel[:] = 0
-        mujoco.mj_forward(self.model, self.data)
-        self._activate_weld(mouth_weld, jar_body, f"{leaf}_seg_05")
-
     def _attach(self, jar: JarSpec, leaf: str):
         is_top = leaf == jar.top_leaf
         table_weld = jar.top_table_weld if is_top else jar.bottom_table_weld
@@ -288,67 +270,61 @@ class ProductionLine:
         mouth_weld = jar.top_mouth_weld if is_top else jar.bottom_mouth_weld
         self.data.eq_active[self.model.equality(suction_weld).id] = 0
         mujoco.mj_forward(self.model, self.data)
-        self._shape_leaf(leaf, mouth_weld, jar.body)
-        if not is_top:
-            self.release_stack_gaps_mm[str(jar.index)] = float(
-                (self._leaf_center(jar.bottom_leaf)[2] - self._leaf_center(jar.top_leaf)[2]) * 1000.0
-            )
-        self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
-
-    def _start_tie_gather(self, jar: JarSpec):
-        """Begin a visible, time-based leaf gathering transition at the neck."""
-        leaves = (jar.top_leaf, jar.bottom_leaf)
-        self.active_tie_gather = LeafGatherTransition(
-            jar=jar,
-            start_bends={
-                leaf: np.array(
+        self._activate_weld(mouth_weld, jar.body, f"{leaf}_seg_05")
+        self.active_leaf_places.append(
+            LeafPlaceTransition(
+                jar=jar,
+                leaf=leaf,
+                mouth_weld=mouth_weld,
+                start_bends=np.array(
                     [self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] for segment in range(1, 11)],
                     dtype=np.float64,
-                )
-                for leaf in leaves
-            },
-            centers={leaf: self._leaf_center(leaf) for leaf in leaves},
+                ),
+                center=self._leaf_center(leaf),
+            )
         )
-        self.actions.append({"label": f"jar {jar.index} start leaf gathering", "code": 0, "duration_s": TIE_GATHER_SECONDS})
+        self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
 
-    def _refresh_gathered_leaf_hold(self):
-        """Hold all completed tie profiles without constraining arm joints."""
-        if not self.gathered_leaf_profiles:
+    def _refresh_placed_leaf_hold(self):
+        """Hold completed flexible placements without constraining arm joints."""
+        if not self.placed_leaf_profiles:
             self.clock.clear_joint_hold()
             return
         qpos_addrs: list[int] = []
         values: list[float] = []
-        for leaf, profile in self.gathered_leaf_profiles.items():
+        for leaf, profile in self.placed_leaf_profiles.items():
             for segment, bend in enumerate(profile, start=1):
                 qpos_addrs.append(int(self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]))
                 values.append(float(bend))
         self.clock.hold_joints(np.asarray(qpos_addrs, dtype=int), np.asarray(values, dtype=np.float64))
 
-    def _advance_tie_gather(self, dt: float):
-        transition = self.active_tie_gather
-        if transition is None:
-            return
-        transition.elapsed = min(TIE_GATHER_SECONDS, transition.elapsed + dt)
-        alpha = smoothstep(transition.elapsed / TIE_GATHER_SECONDS)
-        jar = transition.jar
-        for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
-            target = TIE_LEAF_PROFILE
-            start = transition.start_bends[leaf]
-            for segment, bend in enumerate(start + (target - start) * alpha, start=1):
-                self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] = bend
+    def _advance_leaf_placements(self, dt: float):
+        completed: list[LeafPlaceTransition] = []
+        for transition in self.active_leaf_places:
+            transition.elapsed = min(LEAF_PLACE_TRANSITION_SECONDS, transition.elapsed + dt)
+            alpha = smoothstep(transition.elapsed / LEAF_PLACE_TRANSITION_SECONDS)
+            profile = transition.start_bends + (LEAF_PROFILE - transition.start_bends) * alpha
+            for segment, bend in enumerate(profile, start=1):
+                self.data.qpos[self.model.joint(f"{transition.leaf}_bend_{segment:02d}").qposadr[0]] = bend
             self.data.qvel[:] = 0.0
             mujoco.mj_forward(self.model, self.data)
-            qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
-            self.data.qpos[qposadr : qposadr + 3] += transition.centers[leaf] - self._leaf_center(leaf)
+            qposadr = freejoint_qpos_addr(self.model, f"{transition.leaf}_freejoint")
+            self.data.qpos[qposadr : qposadr + 3] += transition.center - self._leaf_center(transition.leaf)
             self.data.qvel[:] = 0.0
             mujoco.mj_forward(self.model, self.data)
-            self._activate_weld(mouth_weld, jar.body, f"{leaf}_seg_05")
-        if transition.elapsed >= TIE_GATHER_SECONDS:
-            for leaf in (jar.top_leaf, jar.bottom_leaf):
-                self.gathered_leaf_profiles[leaf] = TIE_LEAF_PROFILE.copy()
-            self._refresh_gathered_leaf_hold()
-            self.actions.append({"label": f"jar {jar.index} complete leaf gathering", "code": 0})
-            self.active_tie_gather = None
+            self._activate_weld(transition.mouth_weld, transition.jar.body, f"{transition.leaf}_seg_05")
+            if transition.elapsed >= LEAF_PLACE_TRANSITION_SECONDS:
+                completed.append(transition)
+        for transition in completed:
+            self.active_leaf_places.remove(transition)
+            self.placed_leaf_profiles[transition.leaf] = LEAF_PROFILE.copy()
+            if transition.leaf == transition.jar.bottom_leaf:
+                self.release_stack_gaps_mm[str(transition.jar.index)] = float(
+                    (self._leaf_center(transition.jar.bottom_leaf)[2] - self._leaf_center(transition.jar.top_leaf)[2]) * 1000.0
+                )
+            self.actions.append({"label": f"jar {transition.jar.index} complete flexible leaf placement", "code": 0})
+        if completed:
+            self._refresh_placed_leaf_hold()
 
     @staticmethod
     def _pose(point_m: np.ndarray, yaw_deg: float) -> tuple[np.ndarray, np.ndarray]:
@@ -428,7 +404,7 @@ class ProductionLine:
         append(bottom_place + np.array([0.0, 0.0, 0.025]), 90.0)
         append(np.array([-0.22, 0.52, SAFE_Z_M]), 0.0)
 
-        path = self._build_path(f"left load jar {jar.index}", self.left, self.left_addrs, self.left_dofs, start_q, sequence, 7.5, [])
+        path = self._build_path(f"left load jar {jar.index}", self.left, self.left_addrs, self.left_dofs, start_q, sequence, 11.0, [])
         # Build endpoint indices exactly from Cartesian subdivision counts.
         path.events = []
         event_ordinals = {2: events[0], 6: events[1], 10: events[2], 14: events[3]}
@@ -448,25 +424,19 @@ class ProductionLine:
         start_q = self.data.qpos[self.right_addrs].copy()
         neck = site_pos(self.model, self.data, jar.neck_site)
         ring_offset = site_pos(self.model, self.data, "right_tie_gun_center_site") - site_pos(self.model, self.data, "right_tie_gun_ring_visual_site")
-        # The physical jaws are collidable.  Keep their horizontal ring below
-        # the mouth materials, around the bottle neck, rather than driving it
-        # through the loose leaf edges.  The upper point is a vertical-only
-        # approach/retract clearance for the same ring center.
-        ring_neck = neck + np.array([0.0, 0.0, 0.006])
-        # The lateral entry occurs well above the 420 mm leaf planform.  Only
-        # after it is centered over the neck may the ring descend vertically.
-        ring_transit = neck + np.array([0.0, 0.0, 0.070])
+        current_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
+        current_safe = current_tcp.copy()
+        current_safe[2] = SAFE_Z_M
+        # Keep the unmodified tie tool over the workpiece only. The neck-level
+        # closing/downward stroke will return with the redesigned actuator.
+        ring_safe = neck + np.array([0.0, 0.0, 0.070])
+        station_standby = np.array([TIE_X, -0.31, SAFE_Z_M])
         targets = [
-            (np.array([TIE_X, -0.31, SAFE_Z_M]), 90.0),
-            (np.array([TIE_X, -0.31, SAFE_Z_M + 0.040]), 90.0),
-            (ring_transit + ring_offset, 90.0),
-            (ring_neck + ring_offset, 90.0),
-            (ring_neck + ring_offset, 90.0),
-            (ring_transit + ring_offset, 90.0),
-            (np.array([TIE_X, -0.31, SAFE_Z_M + 0.040]), 90.0),
-            (np.array([TIE_X, -0.31, SAFE_Z_M]), 90.0),
+            (current_safe, 90.0),
+            (ring_safe + ring_offset, 90.0),
+            (station_standby, 90.0),
         ]
-        path = self._build_path(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 7.0, [])
+        path = self._build_path(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 11.0, [])
         # Work out exact target endpoint indices after Cartesian subdivision.
         point_index = 0
         previous_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
@@ -478,17 +448,10 @@ class ProductionLine:
             endpoint_indices.append(point_index)
             previous_tcp = target
             previous_yaw = yaw
-        transit_point = endpoint_indices[2]
-        # Pause above the jar while the flexible leaves visibly gather.  The
-        # following neck descent is therefore not a sudden state change.
-        path.points.insert(transit_point + 1, path.points[transit_point].copy())
-        path.durations.insert(transit_point, TIE_GATHER_SECONDS)
-        path.events.append(PathEvent(transit_point, f"jar {jar.index} start leaf gathering", lambda: self._start_tie_gather(jar)))
-
-        neck_point = endpoint_indices[3] + 1
-        path.points.insert(neck_point + 1, path.points[neck_point].copy())
-        path.durations.insert(neck_point, TIE_HOLD_SECONDS)
-        path.events.append(PathEvent(neck_point, f"jar {jar.index} tie hold", lambda: self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})))
+        overhead_point = endpoint_indices[1]
+        path.points.insert(overhead_point + 1, path.points[overhead_point].copy())
+        path.durations.insert(overhead_point, TIE_HOLD_SECONDS)
+        path.events.append(PathEvent(overhead_point, f"jar {jar.index} tie hold", lambda: self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})))
         return path
 
     def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None, update=None):
@@ -497,7 +460,7 @@ class ProductionLine:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
-        self._advance_tie_gather(dt)
+        self._advance_leaf_placements(dt)
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:
             self._audit_tie_leaf_contacts()
@@ -585,14 +548,14 @@ class ProductionLine:
         self.model.body_pos[body_id(self.model, jar.body)] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
         for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
             self.data.eq_active[self.model.equality(mouth_weld).id] = 0
-            self.gathered_leaf_profiles.pop(leaf, None)
+            self.placed_leaf_profiles.pop(leaf, None)
             joint = self.model.joint(f"{leaf}_freejoint")
             qposadr = int(joint.qposadr[0])
             dofadr = int(joint.dofadr[0])
             self.data.qpos[qposadr : qposadr + 3] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
             self.data.qvel[dofadr : dofadr + 6] = 0.0
         self.exited_jars.add(jar.index)
-        self._refresh_gathered_leaf_hold()
+        self._refresh_placed_leaf_hold()
         mujoco.mj_forward(self.model, self.data)
 
     def run(self):

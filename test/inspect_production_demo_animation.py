@@ -61,8 +61,8 @@ def main() -> None:
         if entry.get("intermediate_stop_count") not in (None, 0):
             raise AssertionError(f"Robot trajectory contains visual waypoint stops: {entry}")
     holds = [entry for entry in result["actions"] if entry["label"].endswith("tie hold")]
-    if any(abs(entry["hold_seconds"] - 1.0) > 0.02 for entry in holds):
-        raise AssertionError(f"Tie-gun hold should be one second: {holds}")
+    if any(abs(entry["hold_seconds"] - 0.5) > 0.02 for entry in holds):
+        raise AssertionError(f"Tie-gun overhead hold should be 0.5 seconds: {holds}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
     if sorted(stack_gaps) != ["1", "2", "3"]:
