@@ -291,12 +291,19 @@ class ProductionLine:
             self.clock.clear_joint_hold()
             return
         qpos_addrs: list[int] = []
+        dof_addrs: list[int] = []
         values: list[float] = []
         for leaf, profile in self.placed_leaf_profiles.items():
             for segment, bend in enumerate(profile, start=1):
-                qpos_addrs.append(int(self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]))
+                joint = self.model.joint(f"{leaf}_bend_{segment:02d}")
+                qpos_addrs.append(int(joint.qposadr[0]))
+                dof_addrs.append(int(joint.dofadr[0]))
                 values.append(float(bend))
-        self.clock.hold_joints(np.asarray(qpos_addrs, dtype=int), np.asarray(values, dtype=np.float64))
+        self.clock.hold_joints(
+            np.asarray(qpos_addrs, dtype=int),
+            np.asarray(values, dtype=np.float64),
+            np.asarray(dof_addrs, dtype=int),
+        )
 
     def _advance_leaf_placements(self, dt: float):
         completed: list[LeafPlaceTransition] = []
@@ -523,6 +530,10 @@ class ProductionLine:
                 self.model.body_pos[body][0] = from_x
         mujoco.mj_forward(self.model, self.data)
         starts = {index: self.model.body_pos[body_id(self.model, JARS[index - 1].body)].copy() for index in moves}
+        mouth_leaf_roots = {
+            index: self._mouth_leaf_roots(JARS[index - 1])
+            for index in moves
+        }
         marker_start = {geom_id: self.model.geom_pos[geom_id].copy() for geom_id in self.marker_starts}
         steps = max(1, int(INDEX_SECONDS / self.model.opt.timestep))
         for step in range(steps):
@@ -533,15 +544,47 @@ class ProductionLine:
                 pos[0] = starts[index][0] + (to_x - starts[index][0]) * alpha
                 displacement = float(pos[0] - starts[index][0])
                 self.model.body_pos[body_id(self.model, JARS[index - 1].body)] = pos
+                self._sync_mouth_leaves_with_jar(JARS[index - 1], mouth_leaf_roots[index], pos - starts[index])
             for geom_id, start_pos in marker_start.items():
                 pos = start_pos.copy()
                 pos[0] = self._belt_x(float(start_pos[0] + displacement))
                 self.model.geom_pos[geom_id] = pos
             self._step()
+            # Contact resolution can pull a lower leaf root away from the
+            # kinematically indexed jar. Restore its exact jar-relative pose
+            # before rendering the next conveyor frame.
+            for index, roots in mouth_leaf_roots.items():
+                body_pos = self.model.body_pos[body_id(self.model, JARS[index - 1].body)]
+                self._sync_mouth_leaves_with_jar(JARS[index - 1], roots, body_pos - starts[index])
+            mujoco.mj_forward(self.model, self.data)
         for index, (_from_x, to_x) in moves.items():
             if abs(to_x - EXIT_X) < 1e-9:
                 self._hide_exited_jar(JARS[index - 1])
         self.actions.append({"label": label, "code": 0, "duration_s": INDEX_SECONDS, "belt_to_jar_speed_ratio": 1.0})
+
+    def _mouth_leaf_roots(self, jar: JarSpec) -> dict[str, np.ndarray]:
+        roots: dict[str, np.ndarray] = {}
+        for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
+            if self.data.eq_active[self.model.equality(mouth_weld).id]:
+                qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
+                roots[leaf] = self.data.qpos[qposadr : qposadr + 3].copy()
+        return roots
+
+    def _sync_mouth_leaves_with_jar(self, jar: JarSpec, roots: dict[str, np.ndarray], displacement: np.ndarray):
+        """Keep welded leaf roots at their exact jar-relative conveyor pose.
+
+        Conveyor indexing edits the jar model pose directly. Equality
+        constraints alone then lag one or more physics steps behind the jar,
+        especially for the lower leaf pressed against the upper one. Moving the
+        free-joint root by the same incremental conveyor displacement preserves
+        the weld relation while leaving every bend joint and collision response
+        under MuJoCo physics.
+        """
+        if not roots:
+            return
+        for leaf, root in roots.items():
+            qposadr = freejoint_qpos_addr(self.model, f"{leaf}_freejoint")
+            self.data.qpos[qposadr : qposadr + 3] = root + displacement
 
     def _hide_exited_jar(self, jar: JarSpec):
         """Remove a completed workpiece and its attached leaves beyond the outfeed."""

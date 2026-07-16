@@ -20,26 +20,29 @@ class AnimationClock:
     realtime: bool
     speed_scale: float
     held_joint_addrs: np.ndarray | None = None
+    held_dof_addrs: np.ndarray | None = None
     held_joint_values: np.ndarray | None = None
     extra_diagnostics: dict = field(default_factory=dict)
 
-    def hold_joints(self, qpos_addrs: np.ndarray, values: np.ndarray):
+    def hold_joints(self, qpos_addrs: np.ndarray, values: np.ndarray, dof_addrs: np.ndarray):
         self.held_joint_addrs = qpos_addrs.copy()
+        self.held_dof_addrs = dof_addrs.copy()
         self.held_joint_values = values.copy()
         self.data.qpos[self.held_joint_addrs] = self.held_joint_values
-        self.data.qvel[:] = 0
+        self.data.qvel[self.held_dof_addrs] = 0
         mujoco.mj_forward(self.model, self.data)
 
     def clear_joint_hold(self):
         self.held_joint_addrs = None
+        self.held_dof_addrs = None
         self.held_joint_values = None
 
     def step(self, steps: int = 1):
         for _ in range(max(1, steps)):
             mujoco.mj_step(self.model, self.data)
-            if self.held_joint_addrs is not None and self.held_joint_values is not None:
+            if self.held_joint_addrs is not None and self.held_dof_addrs is not None and self.held_joint_values is not None:
                 self.data.qpos[self.held_joint_addrs] = self.held_joint_values
-                self.data.qvel[:] = 0
+                self.data.qvel[self.held_dof_addrs] = 0
                 mujoco.mj_forward(self.model, self.data)
             if self.viewer is not None:
                 self.viewer.sync()
@@ -49,9 +52,9 @@ class AnimationClock:
     def step_physics_without_viewer_sync(self, steps: int = 1):
         for _ in range(max(1, steps)):
             mujoco.mj_step(self.model, self.data)
-            if self.held_joint_addrs is not None and self.held_joint_values is not None:
+            if self.held_joint_addrs is not None and self.held_dof_addrs is not None and self.held_joint_values is not None:
                 self.data.qpos[self.held_joint_addrs] = self.held_joint_values
-                self.data.qvel[:] = 0
+                self.data.qvel[self.held_dof_addrs] = 0
                 mujoco.mj_forward(self.model, self.data)
 
     def run_seconds(self, seconds: float, callback=None):
