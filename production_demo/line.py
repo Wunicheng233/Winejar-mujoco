@@ -47,6 +47,10 @@ LEAF_PROFILE = np.array(
     [-0.0309, -0.3253, 0.0026, 0.3692, 0.0581, 0.0039, -0.0807, 0.3311, -0.1450, -0.0060],
     dtype=np.float64,
 )
+# The tie-gun works after the two leaves have been gathered around the neck.
+# This stronger profile folds their free ends down instead of leaving a flat
+# sheet across the path of the collidable circular jaws.
+TIE_LEAF_PROFILE = np.clip(LEAF_PROFILE * 2.45, -1.10, 1.10)
 
 
 @dataclass(frozen=True)
@@ -172,6 +176,19 @@ class ProductionLine:
         self.actions: list[dict] = []
         self.exited_jars: set[int] = set()
         self.release_stack_gaps_mm: dict[str, float] = {}
+        self.tie_leaf_contacts: set[str] = set()
+        self.tie_leaf_penetrations: set[str] = set()
+        self.tie_leaf_contact_samples: list[dict] = []
+        self.tie_geom_ids = {
+            geom_id
+            for geom_id in range(model.ngeom)
+            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and name.startswith("right_tie_gun_")
+        }
+        self.leaf_geom_ids = {
+            geom_id
+            for geom_id in range(model.ngeom)
+            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and "bamboo_leaf" in name
+        }
         self.marker_starts = {
             geom_id: model.geom_pos[geom_id].copy()
             for geom_id in range(model.ngeom)
@@ -181,6 +198,9 @@ class ProductionLine:
     def reset(self):
         self.exited_jars.clear()
         self.release_stack_gaps_mm.clear()
+        self.tie_leaf_contacts.clear()
+        self.tie_leaf_penetrations.clear()
+        self.tie_leaf_contact_samples.clear()
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
@@ -217,9 +237,9 @@ class ProductionLine:
     def _leaf_center(self, leaf: str) -> np.ndarray:
         return self.data.site_xpos[self.model.site(f"{leaf}_center_site").id].copy()
 
-    def _shape_leaf(self, leaf: str, mouth_weld: str, jar_body: str):
+    def _shape_leaf(self, leaf: str, mouth_weld: str, jar_body: str, profile: np.ndarray = LEAF_PROFILE):
         center_before = self._leaf_center(leaf)
-        for segment, bend in enumerate(LEAF_PROFILE, start=1):
+        for segment, bend in enumerate(profile, start=1):
             self.data.qpos[self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]] = bend
         self.data.qvel[:] = 0
         mujoco.mj_forward(self.model, self.data)
@@ -347,19 +367,28 @@ class ProductionLine:
 
     def _tie_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.right_addrs].copy()
+        # Gather the compliant leaves before bringing the physical ring to the
+        # neck.  This is the simulated counterpart of the real tie process.
+        self._shape_leaf(jar.top_leaf, jar.top_mouth_weld, jar.body, TIE_LEAF_PROFILE)
+        self._shape_leaf(jar.bottom_leaf, jar.bottom_mouth_weld, jar.body, TIE_LEAF_PROFILE)
         neck = site_pos(self.model, self.data, jar.neck_site)
         ring_offset = site_pos(self.model, self.data, "right_tie_gun_center_site") - site_pos(self.model, self.data, "right_tie_gun_ring_visual_site")
-        # The ring is wider than the leaf stack and approaches around its outside.
-        # A 40 mm neck clearance keeps the tool center inside the downstream
-        # xArm workspace while avoiding any sweep through the mouth materials.
-        ring_above = neck + np.array([0.0, 0.0, 0.040])
-        ring_neck = neck + np.array([0.0, 0.0, 0.028])
+        # The physical jaws are collidable.  Keep their horizontal ring below
+        # the mouth materials, around the bottle neck, rather than driving it
+        # through the loose leaf edges.  The upper point is a vertical-only
+        # approach/retract clearance for the same ring center.
+        ring_neck = neck + np.array([0.0, 0.0, 0.006])
+        # The lateral entry occurs well above the 420 mm leaf planform.  Only
+        # after it is centered over the neck may the ring descend vertically.
+        ring_transit = neck + np.array([0.0, 0.0, 0.070])
         targets = [
             (np.array([TIE_X, -0.31, SAFE_Z_M]), 90.0),
-            (ring_above + ring_offset, 90.0),
+            (np.array([TIE_X, -0.31, SAFE_Z_M + 0.040]), 90.0),
+            (ring_transit + ring_offset, 90.0),
             (ring_neck + ring_offset, 90.0),
             (ring_neck + ring_offset, 90.0),
-            (ring_above + ring_offset, 90.0),
+            (ring_transit + ring_offset, 90.0),
+            (np.array([TIE_X, -0.31, SAFE_Z_M + 0.040]), 90.0),
             (np.array([TIE_X, -0.31, SAFE_Z_M]), 90.0),
         ]
         path = self._build_path(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 7.0, [])
@@ -389,7 +418,36 @@ class ProductionLine:
         if right_path is not None:
             right_path.advance(self.data, dt)
         mujoco.mj_forward(self.model, self.data)
+        if right_path is not None:
+            self._audit_tie_leaf_contacts()
         self.clock.step(1)
+
+    def _audit_tie_leaf_contacts(self):
+        """Record every physical contact between the tie gun and leaf stack.
+
+        The arms are kinematically replayed for animation, so contact forces do
+        not automatically re-plan a commanded path.  Recording these contacts
+        makes a collision visible in the saved diagnostics instead of hiding it
+        behind a purely kinematic playback.
+        """
+        for contact in self.data.contact[: self.data.ncon]:
+            first_id, second_id = contact.geom1, contact.geom2
+            if (first_id in self.tie_geom_ids and second_id in self.leaf_geom_ids) or (second_id in self.tie_geom_ids and first_id in self.leaf_geom_ids):
+                first = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, first_id) or ""
+                second = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, second_id) or ""
+                names = (first, second)
+                pair = " <-> ".join(names)
+                if pair not in self.tie_leaf_contacts and len(self.tie_leaf_contact_samples) < 12:
+                    self.tie_leaf_contact_samples.append(
+                        {
+                            "time_s": round(float(self.data.time), 4),
+                            "pair": pair,
+                            "ring_pos_m": self.data.site_xpos[self.model.site("right_tie_gun_ring_visual_site").id].round(5).tolist(),
+                        }
+                    )
+                self.tie_leaf_contacts.add(pair)
+                if float(contact.dist) < -0.0005:
+                    self.tie_leaf_penetrations.add(pair)
 
     def _run_paths(self, left_path: JointPath | None, right_path: JointPath | None):
         while (left_path is not None and not left_path.complete) or (right_path is not None and not right_path.complete):
@@ -478,6 +536,9 @@ class ProductionLine:
             "exited_jars": sorted(self.exited_jars),
             "leaf_heights_m": leaf_heights,
             "release_stack_gaps_mm": self.release_stack_gaps_mm,
+            "tie_leaf_contact_pairs": sorted(self.tie_leaf_contacts),
+            "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
+            "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
             "actions": self.actions,
             "parallel_stations": [
                 {"left": "load jar 2", "right": "tie jar 1"},

@@ -23,13 +23,13 @@ def source_worldbody() -> str:
     return text[start:end].strip()
 
 
-def renamed_leaf_pair(index: int, y_offset: float) -> str:
+def renamed_leaf_pair(index: int, bottom_z: float, top_z: float) -> str:
     text = source_worldbody()
     replacements = {
         "staged_bamboo_leaf_bottom": f"jar_{index:02d}_bamboo_leaf_bottom",
         "staged_bamboo_leaf_top": f"jar_{index:02d}_bamboo_leaf_top",
-        'pos="-0.58 0.56 0.4815"': f'pos="-0.58 {y_offset:.4f} 0.4815"',
-        'pos="-0.58 0.56 0.4845"': f'pos="-0.58 {y_offset:.4f} 0.4845"',
+        'pos="-0.58 0.56 0.4952"': f'pos="-0.58 0.5600 {bottom_z:.4f}"',
+        'pos="-0.58 0.56 0.4986"': f'pos="-0.58 0.5600 {top_z:.4f}"',
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
@@ -74,7 +74,12 @@ def equality_for_pair(index: int) -> str:
 
 
 def main() -> None:
-    leaves = "\n\n".join(renamed_leaf_pair(index, y) for index, y in ((2, 0.40), (3, 0.72)))
+    # All six leaves form one physical material stack.  The first jar consumes
+    # the top pair, followed by the middle and then the bottom pair.
+    leaves = "\n\n".join(
+        renamed_leaf_pair(index, bottom_z, top_z)
+        for index, bottom_z, top_z in ((2, 0.4884, 0.4918), (3, 0.4816, 0.4850))
+    )
     jars = "\n\n".join(jar_body(index) for index in (2, 3))
     equalities = "\n".join(equality_for_pair(index) for index in (2, 3))
     OUTPUT.write_text(

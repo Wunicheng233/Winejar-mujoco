@@ -119,9 +119,12 @@ def main():
     print(f"nbody={model.nbody}, njnt={model.njnt}, ngeom={model.ngeom}, nsite={model.nsite}, nq={model.nq}, nv={model.nv}")
 
     table_top_z = data.xpos[model.body("left_material_table").id][2] + 0.24
+    # Jar 1 consumes the uppermost pair from the shared six-leaf stack.
+    # Each compliant leaf is 3 mm thick and adjacent layers retain a 0.4 mm
+    # visible/collision-safe separation.
     for leaf_name, expected_bottom_z in [
-        ("staged_bamboo_leaf_bottom", table_top_z),
-        ("staged_bamboo_leaf_top", table_top_z + 0.003),
+        ("staged_bamboo_leaf_bottom", table_top_z + 0.0137),
+        ("staged_bamboo_leaf_top", table_top_z + 0.0171),
     ]:
         print(f"\nChecking {leaf_name}")
         check_leaf_structure(model, leaf_name)

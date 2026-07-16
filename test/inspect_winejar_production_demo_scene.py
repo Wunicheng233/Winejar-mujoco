@@ -30,10 +30,39 @@ def main() -> None:
             require(model, mujoco.mjtObj.mjOBJ_SITE, f"{prefix}_{side}_pick_site")
             for segment in range(11):
                 require(model, mujoco.mjtObj.mjOBJ_BODY, f"{prefix}_{side}_seg_{segment:02d}")
+                geom = model.geom(f"{prefix}_{side}_seg_{segment:02d}_geom")
+                if int(geom.contype[0]) == 0 or int(geom.conaffinity[0]) == 0:
+                    raise AssertionError(f"Leaf segment must retain a physical collision volume: {prefix}_{side}_seg_{segment:02d}")
     if mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "staged_label_paper") >= 0:
         raise AssertionError("Label paper should be absent from the revised production scene")
     for camera in ("global_overview_camera", "front_conveyor_camera", "side_overview_camera"):
         require(model, mujoco.mjtObj.mjOBJ_CAMERA, camera)
+
+    tie_collision_geoms = (
+        "right_tie_gun_body",
+        "right_tie_gun_support_rod_front",
+        "right_tie_gun_closed_jaw_0",
+        "right_tie_gun_loaded_band_0",
+    )
+    for geom_name in tie_collision_geoms:
+        geom = model.geom(geom_name)
+        if int(geom.contype[0]) == 0 or int(geom.conaffinity[0]) == 0:
+            raise AssertionError(f"Tie-gun contact proxy is disabled: {geom_name}")
+
+    stack_centers = []
+    for index in (1, 2, 3):
+        prefix = "staged_bamboo_leaf" if index == 1 else f"jar_{index:02d}_bamboo_leaf"
+        stack_centers.extend(
+            data.xpos[model.body(f"{prefix}_{side}").id].copy()
+            for side in ("top", "bottom")
+        )
+    stack_xy = np.asarray([center[:2] for center in stack_centers])
+    if np.max(np.ptp(stack_xy, axis=0)) > 1e-4:
+        raise AssertionError(f"All bamboo leaves must start in one physical material stack: {stack_xy}")
+    stack_z = np.sort(np.asarray([center[2] for center in stack_centers]))
+    gaps_mm = np.diff(stack_z) * 1000.0
+    if np.any(gaps_mm < 3.1) or np.any(gaps_mm > 3.7):
+        raise AssertionError(f"Leaf stack must show six distinct physical layers, got gaps {gaps_mm}")
 
     left_base = data.xpos[model.body("left_line_base").id]
     right_base = data.xpos[model.body("right_line_base").id]

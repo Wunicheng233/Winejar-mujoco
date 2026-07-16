@@ -5,42 +5,42 @@
     <material name="compliant_bamboo_mat_top" rgba="0.76 0.58 0.24 1" specular="0.08" shininess="0.12" />
   </asset>
   <worldbody>
-    <body name="staged_bamboo_leaf_bottom" pos="-0.58 0.56 0.4815" euler="0 0 0">
+    <body name="staged_bamboo_leaf_bottom" pos="-0.58 0.56 0.4952" euler="0 0 0">
       <freejoint name="staged_bamboo_leaf_bottom_freejoint" />
       <body name="staged_bamboo_leaf_bottom_seg_00" pos="-0.19091 0 0">
-        <geom name="staged_bamboo_leaf_bottom_seg_00_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+        <geom name="staged_bamboo_leaf_bottom_seg_00_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
         <body name="staged_bamboo_leaf_bottom_seg_01" pos="0.03818 0 0">
           <joint name="staged_bamboo_leaf_bottom_bend_01" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-          <geom name="staged_bamboo_leaf_bottom_seg_01_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+          <geom name="staged_bamboo_leaf_bottom_seg_01_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
           <body name="staged_bamboo_leaf_bottom_seg_02" pos="0.03818 0 0">
             <joint name="staged_bamboo_leaf_bottom_bend_02" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-            <geom name="staged_bamboo_leaf_bottom_seg_02_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+            <geom name="staged_bamboo_leaf_bottom_seg_02_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
             <body name="staged_bamboo_leaf_bottom_seg_03" pos="0.03818 0 0">
               <joint name="staged_bamboo_leaf_bottom_bend_03" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-              <geom name="staged_bamboo_leaf_bottom_seg_03_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+              <geom name="staged_bamboo_leaf_bottom_seg_03_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
               <body name="staged_bamboo_leaf_bottom_seg_04" pos="0.03818 0 0">
                 <joint name="staged_bamboo_leaf_bottom_bend_04" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                <geom name="staged_bamboo_leaf_bottom_seg_04_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                <geom name="staged_bamboo_leaf_bottom_seg_04_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                 <body name="staged_bamboo_leaf_bottom_seg_05" pos="0.03818 0 0">
                   <joint name="staged_bamboo_leaf_bottom_bend_05" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                  <geom name="staged_bamboo_leaf_bottom_seg_05_geom" type="box" size="0.02138 0.06250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                  <geom name="staged_bamboo_leaf_bottom_seg_05_geom" type="box" size="0.02138 0.06250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                   <site name="staged_bamboo_leaf_bottom_pick_site" pos="0 0 0.00450" type="sphere" size="0.007" rgba="0 1 0 0.7" />
                   <site name="staged_bamboo_leaf_bottom_center_site" pos="0 0 0.00350" type="sphere" size="0.006" rgba="1 0 0 0.6" />
                   <body name="staged_bamboo_leaf_bottom_seg_06" pos="0.03818 0 0">
                     <joint name="staged_bamboo_leaf_bottom_bend_06" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                    <geom name="staged_bamboo_leaf_bottom_seg_06_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                    <geom name="staged_bamboo_leaf_bottom_seg_06_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                     <body name="staged_bamboo_leaf_bottom_seg_07" pos="0.03818 0 0">
                       <joint name="staged_bamboo_leaf_bottom_bend_07" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                      <geom name="staged_bamboo_leaf_bottom_seg_07_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                      <geom name="staged_bamboo_leaf_bottom_seg_07_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                       <body name="staged_bamboo_leaf_bottom_seg_08" pos="0.03818 0 0">
                         <joint name="staged_bamboo_leaf_bottom_bend_08" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                        <geom name="staged_bamboo_leaf_bottom_seg_08_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                        <geom name="staged_bamboo_leaf_bottom_seg_08_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                         <body name="staged_bamboo_leaf_bottom_seg_09" pos="0.03818 0 0">
                           <joint name="staged_bamboo_leaf_bottom_bend_09" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                          <geom name="staged_bamboo_leaf_bottom_seg_09_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                          <geom name="staged_bamboo_leaf_bottom_seg_09_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                           <body name="staged_bamboo_leaf_bottom_seg_10" pos="0.03818 0 0">
                             <joint name="staged_bamboo_leaf_bottom_bend_10" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                            <geom name="staged_bamboo_leaf_bottom_seg_10_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" />
+                            <geom name="staged_bamboo_leaf_bottom_seg_10_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_bottom" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                           </body>
                         </body>
                       </body>
@@ -53,42 +53,42 @@
         </body>
       </body>
     </body>
-    <body name="staged_bamboo_leaf_top" pos="-0.58 0.56 0.4845" euler="0 0 0">
+    <body name="staged_bamboo_leaf_top" pos="-0.58 0.56 0.4986" euler="0 0 0">
       <freejoint name="staged_bamboo_leaf_top_freejoint" />
       <body name="staged_bamboo_leaf_top_seg_00" pos="-0.19091 0 0">
-        <geom name="staged_bamboo_leaf_top_seg_00_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+        <geom name="staged_bamboo_leaf_top_seg_00_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
         <body name="staged_bamboo_leaf_top_seg_01" pos="0.03818 0 0">
           <joint name="staged_bamboo_leaf_top_bend_01" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-          <geom name="staged_bamboo_leaf_top_seg_01_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+          <geom name="staged_bamboo_leaf_top_seg_01_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
           <body name="staged_bamboo_leaf_top_seg_02" pos="0.03818 0 0">
             <joint name="staged_bamboo_leaf_top_bend_02" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-            <geom name="staged_bamboo_leaf_top_seg_02_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+            <geom name="staged_bamboo_leaf_top_seg_02_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
             <body name="staged_bamboo_leaf_top_seg_03" pos="0.03818 0 0">
               <joint name="staged_bamboo_leaf_top_bend_03" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-              <geom name="staged_bamboo_leaf_top_seg_03_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+              <geom name="staged_bamboo_leaf_top_seg_03_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
               <body name="staged_bamboo_leaf_top_seg_04" pos="0.03818 0 0">
                 <joint name="staged_bamboo_leaf_top_bend_04" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                <geom name="staged_bamboo_leaf_top_seg_04_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                <geom name="staged_bamboo_leaf_top_seg_04_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                 <body name="staged_bamboo_leaf_top_seg_05" pos="0.03818 0 0">
                   <joint name="staged_bamboo_leaf_top_bend_05" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                  <geom name="staged_bamboo_leaf_top_seg_05_geom" type="box" size="0.02138 0.06250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                  <geom name="staged_bamboo_leaf_top_seg_05_geom" type="box" size="0.02138 0.06250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                   <site name="staged_bamboo_leaf_top_pick_site" pos="0 0 0.00450" type="sphere" size="0.007" rgba="0 1 0 0.7" />
                   <site name="staged_bamboo_leaf_top_center_site" pos="0 0 0.00350" type="sphere" size="0.006" rgba="1 0 0 0.6" />
                   <body name="staged_bamboo_leaf_top_seg_06" pos="0.03818 0 0">
                     <joint name="staged_bamboo_leaf_top_bend_06" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                    <geom name="staged_bamboo_leaf_top_seg_06_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                    <geom name="staged_bamboo_leaf_top_seg_06_geom" type="box" size="0.02138 0.05942 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                     <body name="staged_bamboo_leaf_top_seg_07" pos="0.03818 0 0">
                       <joint name="staged_bamboo_leaf_top_bend_07" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                      <geom name="staged_bamboo_leaf_top_seg_07_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                      <geom name="staged_bamboo_leaf_top_seg_07_geom" type="box" size="0.02138 0.05250 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                       <body name="staged_bamboo_leaf_top_seg_08" pos="0.03818 0 0">
                         <joint name="staged_bamboo_leaf_top_bend_08" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                        <geom name="staged_bamboo_leaf_top_seg_08_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                        <geom name="staged_bamboo_leaf_top_seg_08_geom" type="box" size="0.02138 0.04257 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                         <body name="staged_bamboo_leaf_top_seg_09" pos="0.03818 0 0">
                           <joint name="staged_bamboo_leaf_top_bend_09" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                          <geom name="staged_bamboo_leaf_top_seg_09_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+                          <geom name="staged_bamboo_leaf_top_seg_09_geom" type="box" size="0.02138 0.03000 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                           <body name="staged_bamboo_leaf_top_seg_10" pos="0.03818 0 0">
                             <joint name="staged_bamboo_leaf_top_bend_10" type="hinge" axis="0 1 0" pos="-0.01909 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true" />
-                            <geom name="staged_bamboo_leaf_top_seg_10_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" />
+      <geom name="staged_bamboo_leaf_top_seg_10_geom" type="box" size="0.02138 0.01500 0.00150" material="compliant_bamboo_mat_top" mass="0.000909" friction="4 2 1" condim="6" contype="1" conaffinity="5" />
                           </body>
                         </body>
                       </body>
