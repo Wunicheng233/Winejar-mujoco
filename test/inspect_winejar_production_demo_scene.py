@@ -49,6 +49,11 @@ def main() -> None:
         if int(geom.contype[0]) == 0 or int(geom.conaffinity[0]) == 0:
             raise AssertionError(f"Tie-gun contact proxy is disabled: {geom_name}")
 
+    for geom_name in ("preloaded_lotus_leaf_geom", "jar_02_preloaded_lotus_leaf_geom", "jar_03_preloaded_lotus_leaf_geom"):
+        geom = model.geom(geom_name)
+        if int(geom.dataid[0]) != model.mesh("cropped_lotus_leaf_tie_safe_mesh").id:
+            raise AssertionError(f"Lotus leaf must use the reduced tie-safe mesh: {geom_name}")
+
     stack_centers = []
     for index in (1, 2, 3):
         prefix = "staged_bamboo_leaf" if index == 1 else f"jar_{index:02d}_bamboo_leaf"

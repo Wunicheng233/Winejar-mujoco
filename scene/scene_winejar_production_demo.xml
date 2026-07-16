@@ -50,6 +50,7 @@
 
     <mesh name="wine_jar_mesh" file="materials/wine_jar.stl"/>
     <mesh name="cropped_lotus_leaf_mesh" file="materials/cropped_lotus_leaf.stl"/>
+    <mesh name="cropped_lotus_leaf_tie_safe_mesh" file="materials/cropped_lotus_leaf.stl" scale="0.40 0.40 1"/>
     <mesh name="cropped_white_paper_mesh" file="materials/cropped_white_paper.stl"/>
     <mesh name="bamboo_leaf_mesh" file="materials/bamboo_leaf.stl"/>
   </asset>
@@ -104,8 +105,8 @@
       <geom name="wine_jar_neck_collision" type="cylinder" pos="0 0 0.4525" size="0.06 0.0075"
             material="jar_collision_mat" mass="1" friction="1 1 1"/>
       <site name="jar_mouth_center" pos="0 0 0.46" type="sphere" size="0.012" rgba="1 0 0 0.8"/>
-      <body name="preloaded_lotus_leaf" pos="0 0 0.462" euler="0 0 0.42">
-        <geom name="preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_mesh" material="lotus_mat"
+      <body name="preloaded_lotus_leaf" pos="0 0 0.340" euler="0 0 0.42">
+        <geom name="preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_tie_safe_mesh" material="lotus_mat"
               mass="0.02" friction="1 1 1"/>
       </body>
       <body name="preloaded_white_paper" pos="0 0 0.467" euler="0 0 -0.18">

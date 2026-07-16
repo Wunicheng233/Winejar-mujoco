@@ -48,8 +48,8 @@ def jar_body(index: int) -> str:
             material="jar_collision_mat" mass="1" friction="1 1 1" contype="2" conaffinity="1"/>
       <site name="jar_{index:02d}_mouth_center" pos="0 0 0.46" type="sphere" size="0.010" rgba="1 0 0 0"/>
       <site name="jar_{index:02d}_neck_tie_target" pos="0 0 0.452" type="sphere" size="0.010" rgba="0 0.7 1 0"/>
-      <body name="jar_{index:02d}_preloaded_lotus_leaf" pos="0 0 0.462" euler="0 0 0.42">
-        <geom name="jar_{index:02d}_preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_mesh" material="lotus_mat" mass="0.02" friction="1 1 1"/>
+      <body name="jar_{index:02d}_preloaded_lotus_leaf" pos="0 0 0.340" euler="0 0 0.42">
+        <geom name="jar_{index:02d}_preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_tie_safe_mesh" material="lotus_mat" mass="0.02" friction="1 1 1"/>
       </body>
       <body name="jar_{index:02d}_preloaded_white_paper" pos="0 0 0.467" euler="0 0 -0.18">
         <geom name="jar_{index:02d}_preloaded_white_paper_geom" type="mesh" mesh="cropped_white_paper_mesh" material="paper_mat" mass="0.01" friction="1 1 1"/>

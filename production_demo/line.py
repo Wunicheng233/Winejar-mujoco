@@ -48,10 +48,9 @@ LEAF_PROFILE = np.array(
     [-0.0309, -0.3253, 0.0026, 0.3692, 0.0581, 0.0039, -0.0807, 0.3311, -0.1450, -0.0060],
     dtype=np.float64,
 )
-# The tie-gun works after the two leaves have been gathered around the neck.
-# This stronger profile folds their free ends down instead of leaving a flat
-# sheet across the path of the collidable circular jaws.
-TIE_LEAF_PROFILE = np.clip(LEAF_PROFILE * 2.45, -1.10, 1.10)
+# The centered two-branch leaf model uses matching bend values on its left and
+# right branches.  That pulls both free ends down toward the bottle neck.
+TIE_LEAF_PROFILE = np.full(10, 0.34, dtype=np.float64)
 
 
 @dataclass(frozen=True)
@@ -188,6 +187,7 @@ class ProductionLine:
         self.tie_leaf_contacts: set[str] = set()
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
+        self.leaf_lotus_contacts: set[str] = set()
         self.active_tie_gather: LeafGatherTransition | None = None
         self.tie_geom_ids = {
             geom_id
@@ -198,6 +198,11 @@ class ProductionLine:
             geom_id
             for geom_id in range(model.ngeom)
             if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and "bamboo_leaf" in name
+        }
+        self.lotus_geom_ids = {
+            geom_id
+            for geom_id in range(model.ngeom)
+            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and "preloaded_lotus_leaf" in name
         }
         self.marker_starts = {
             geom_id: model.geom_pos[geom_id].copy()
@@ -211,6 +216,7 @@ class ProductionLine:
         self.tie_leaf_contacts.clear()
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
+        self.leaf_lotus_contacts.clear()
         self.active_tie_gather = None
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
@@ -484,6 +490,13 @@ class ProductionLine:
         """
         for contact in self.data.contact[: self.data.ncon]:
             first_id, second_id = contact.geom1, contact.geom2
+            if (
+                ((first_id in self.leaf_geom_ids and second_id in self.lotus_geom_ids) or (second_id in self.leaf_geom_ids and first_id in self.lotus_geom_ids))
+                and float(contact.dist) < -0.0005
+            ):
+                first = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, first_id) or ""
+                second = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, second_id) or ""
+                self.leaf_lotus_contacts.add(" <-> ".join((first, second)))
             if (first_id in self.tie_geom_ids and second_id in self.leaf_geom_ids) or (second_id in self.tie_geom_ids and first_id in self.leaf_geom_ids):
                 first = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, first_id) or ""
                 second = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, second_id) or ""
@@ -591,6 +604,7 @@ class ProductionLine:
             "tie_leaf_contact_pairs": sorted(self.tie_leaf_contacts),
             "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
             "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
+            "leaf_lotus_contact_pairs": sorted(self.leaf_lotus_contacts),
             "actions": self.actions,
             "parallel_stations": [
                 {"left": "load jar 2", "right": "tie jar 1"},
