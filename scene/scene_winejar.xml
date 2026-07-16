@@ -1,0 +1,114 @@
+<mujoco model="winejar loading scene">
+  <include file="xarm6.xml"/>
+
+  <option integrator="implicitfast" gravity="0 0 -9.81" timestep="0.001"/>
+  <statistic center="0.30 0.25 0.40" extent="1.1"/>
+
+  <visual>
+    <quality shadowsize="2048"/>
+    <headlight diffuse="0.28 0.28 0.27" ambient="0.15 0.16 0.18" specular="0.16 0.16 0.16"/>
+    <rgba haze="0.72 0.76 0.80 1"/>
+    <global azimuth="135" elevation="-25"/>
+  </visual>
+
+  <asset>
+    <texture type="2d" name="workbench_texture" file="textures/workbench_laminate.png"/>
+    <material name="table_laminate" texture="workbench_texture" texuniform="true" texrepeat="2 2"
+              rgba="0.66 0.68 0.70 1" specular="0.14" shininess="0.18" reflectance="0.02"/>
+    <texture type="skybox" builtin="gradient" rgb1="0.82 0.86 0.90" rgb2="0.26 0.30 0.34"
+             width="512" height="3072"/>
+    <texture type="2d" name="ground_texture" builtin="checker"
+             rgb1="0.18 0.19 0.20" rgb2="0.21 0.22 0.23" width="512" height="512"/>
+    <material name="ground_material" texture="ground_texture" texuniform="true" texrepeat="18 18"
+              specular="0.08" shininess="0.12" reflectance="0.02"/>
+
+    <material name="base_mat" rgba="0.25 0.27 0.28 1" specular="0.15" shininess="0.20"/>
+    <material name="jar_mat" rgba="0.48 0.23 0.11 1" specular="0.18" shininess="0.32"/>
+    <material name="jar_collision_mat" rgba="0.48 0.23 0.11 0.12"/>
+    <material name="lotus_mat" rgba="0.18 0.45 0.20 1" specular="0.08" shininess="0.15"/>
+    <material name="paper_mat" rgba="0.94 0.93 0.88 1" specular="0.05" shininess="0.10"/>
+    <material name="ceramic_mat" rgba="0.72 0.34 0.12 1" specular="0.18" shininess="0.28"/>
+    <material name="bamboo_mat" rgba="0.34 0.55 0.22 1" specular="0.08" shininess="0.12"/>
+    <material name="label_mat" rgba="0.93 0.86 0.58 1" specular="0.05" shininess="0.10"/>
+
+    <mesh name="wine_jar_mesh" file="materials/wine_jar.stl"/>
+    <mesh name="lotus_leaf_mesh" file="materials/lotus_leaf.stl"/>
+    <mesh name="bamboo_leaf_mesh" file="materials/bamboo_leaf.stl"/>
+  </asset>
+
+  <worldbody>
+    <light name="key_light" pos="-0.35 -0.55 1.4" dir="0.25 0.35 -1" directional="true"
+           diffuse="0.52 0.50 0.46" specular="0.22 0.21 0.19" castshadow="true"/>
+    <light name="fill_light" pos="0.75 0.45 1.05" dir="-0.5 -0.25 -1" directional="true"
+           diffuse="0.18 0.21 0.26" specular="0.06 0.07 0.09" castshadow="false"/>
+    <geom name="floor" pos="0 0 -0.02" size="0 0 0.05" type="plane" material="ground_material"/>
+
+    <body name="robot_base_pedestal" pos="0 0 0.10">
+      <geom name="robot_base_pedestal_geom" type="box" size="0.22 0.22 0.10" material="base_mat"
+            mass="2000" friction="1 1 1"/>
+    </body>
+
+    <body name="wine_jar" pos="0.60 0 0">
+      <geom name="wine_jar_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat"
+            contype="0" conaffinity="0"/>
+      <geom name="wine_jar_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
+            material="jar_collision_mat" mass="8" friction="1 1 1"/>
+      <geom name="wine_jar_shoulder_collision" type="cylinder" pos="0 0 0.405" size="0.11 0.055"
+            material="jar_collision_mat" mass="2" friction="1 1 1"/>
+      <geom name="wine_jar_neck_collision" type="cylinder" pos="0 0 0.4525" size="0.06 0.0075"
+            material="jar_collision_mat" mass="1" friction="1 1 1"/>
+      <site name="jar_mouth_center" pos="0 0 0.46" type="sphere" size="0.012" rgba="1 0 0 0.8"/>
+      <site name="jar_label_target" pos="0.061 0 0.43" type="sphere" size="0.01" rgba="0 0.25 1 0.8"/>
+      <site name="jar_centerline" pos="0 0 0.23" type="cylinder" size="0.004 0.23" rgba="1 1 1 0.25"/>
+    </body>
+
+    <body name="material_table" pos="0.00 0.84 0.25">
+      <geom name="material_table_geom" type="box" size="0.65 0.34 0.25" material="table_laminate"
+            mass="2000" friction="1 1 1"/>
+    </body>
+
+    <body name="lotus_leaf" pos="-0.45 0.46 0.512" euler="0 0 1.5708">
+      <geom name="lotus_leaf_geom" type="mesh" mesh="lotus_leaf_mesh" material="lotus_mat"
+            mass="0.03" friction="1 1 1"/>
+      <site name="lotus_leaf_center_site" pos="0.13 0 0.004" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="lotus_leaf_grasp_site" pos="0 0 0.004" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <body name="white_paper" pos="-0.12 0.608 0.515">
+      <geom name="white_paper_geom" type="box" size="0.105 0.1485 0.002" material="paper_mat"
+            mass="0.01" friction="1 1 1"/>
+      <site name="white_paper_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="white_paper_grasp_site" pos="0 -0.1485 0.003" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <body name="ceramic_disc" pos="0.08 0.51 0.518">
+      <geom name="ceramic_disc_geom" type="cylinder" size="0.05 0.005" material="ceramic_mat"
+            mass="0.20" friction="1 1 1"/>
+      <site name="ceramic_disc_center_site" pos="0 0 0.006" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="ceramic_disc_grasp_site" pos="0 -0.05 0.006" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <body name="bamboo_leaf_1" pos="0.25 0.67 0.515" euler="0 0 1.5708">
+      <geom name="bamboo_leaf_1_geom" type="mesh" mesh="bamboo_leaf_mesh" material="bamboo_mat"
+            mass="0.01" friction="1 1 1"/>
+      <site name="bamboo_leaf_1_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="bamboo_leaf_1_grasp_site" pos="-0.21 0 0.003" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <body name="bamboo_leaf_2" pos="0.42 0.67 0.515" euler="0 0 1.5708">
+      <geom name="bamboo_leaf_2_geom" type="mesh" mesh="bamboo_leaf_mesh" material="bamboo_mat"
+            mass="0.01" friction="1 1 1"/>
+      <site name="bamboo_leaf_2_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="bamboo_leaf_2_grasp_site" pos="-0.21 0 0.003" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <body name="label_paper" pos="0.56 0.56 0.515">
+      <geom name="label_paper_geom" type="box" size="0.04 0.10 0.002" material="label_mat"
+            mass="0.01" friction="1 1 1"/>
+      <site name="label_paper_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="label_paper_grasp_site" pos="0 -0.10 0.003" type="sphere" size="0.006" rgba="0 1 0 0.7"/>
+    </body>
+
+    <camera name="winejar_overview_cam" pos="1.15 -0.85 1.10" euler="0.85 0 0.90" fovy="45" resolution="1920 1080"/>
+  </worldbody>
+</mujoco>

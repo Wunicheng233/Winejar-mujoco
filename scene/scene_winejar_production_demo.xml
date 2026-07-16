@@ -1,0 +1,320 @@
+<mujoco model="winejar production animation demo scene">
+  <include file="xarm6_left_vacuum.xml"/>
+  <include file="xarm6_right_tie_gun.xml"/>
+  <include file="compliant_bamboo_leaf_pair.xml"/>
+
+  <compiler angle="radian" meshdir="assets"/>
+
+  <option integrator="implicitfast" gravity="0 0 -9.81" timestep="0.001"/>
+  <statistic center="0 0 0.48" extent="1.55"/>
+
+  <visual>
+    <quality shadowsize="2048"/>
+    <headlight diffuse="0.30 0.30 0.28" ambient="0.16 0.17 0.18" specular="0.18 0.18 0.16"/>
+    <rgba haze="0.74 0.78 0.82 1"/>
+    <global azimuth="135" elevation="-24" offwidth="1280" offheight="720"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.82 0.86 0.90" rgb2="0.26 0.30 0.34"
+             width="512" height="3072"/>
+    <texture type="2d" name="ground_texture" builtin="checker"
+             rgb1="0.18 0.19 0.20" rgb2="0.21 0.22 0.23" width="512" height="512"/>
+    <material name="ground_material" texture="ground_texture" texuniform="true" texrepeat="18 18"
+              specular="0.08" shininess="0.12" reflectance="0.02"/>
+    <material name="factory_floor_mat" texture="ground_texture" texuniform="true" texrepeat="16 12"
+              rgba="0.55 0.57 0.56 1" specular="0.12" shininess="0.16" reflectance="0.03"/>
+    <material name="factory_wall_mat" rgba="0.63 0.66 0.67 1" specular="0.08" shininess="0.12"/>
+    <material name="factory_ceiling_mat" rgba="0.70 0.72 0.72 1" specular="0.10" shininess="0.14"/>
+
+    <texture type="2d" name="workbench_texture" file="textures/workbench_laminate.png"/>
+    <material name="workbench_mat" texture="workbench_texture" texuniform="true" texrepeat="2 2"
+              rgba="0.66 0.68 0.70 1" specular="0.14" shininess="0.18" reflectance="0.02"/>
+    <material name="base_mat" rgba="0.25 0.27 0.28 1" specular="0.15" shininess="0.20"/>
+    <material name="conveyor_frame_mat" rgba="0.18 0.20 0.21 1" specular="0.18" shininess="0.22"/>
+    <material name="conveyor_belt_mat" rgba="0.035 0.04 0.042 1" specular="0.06" shininess="0.08"/>
+    <material name="conveyor_rail_mat" rgba="0.42 0.44 0.45 1" specular="0.22" shininess="0.30"/>
+    <material name="belt_marker_mat" rgba="0.94 0.70 0.18 1" specular="0.10" shininess="0.12"/>
+    <material name="jar_mat" rgba="0.48 0.23 0.11 1" specular="0.18" shininess="0.32"/>
+    <material name="jar_collision_mat" rgba="0.48 0.23 0.11 0.10"/>
+    <material name="lotus_mat" rgba="0.18 0.45 0.20 1" specular="0.08" shininess="0.15"/>
+    <material name="paper_mat" rgba="0.94 0.93 0.88 1" specular="0.05" shininess="0.10"/>
+    <material name="ceramic_mat" rgba="0.72 0.34 0.12 1" specular="0.18" shininess="0.28"/>
+    <material name="bamboo_mat_top" rgba="0.76 0.58 0.24 1" specular="0.08" shininess="0.12"/>
+    <material name="bamboo_mat_bottom" rgba="0.62 0.46 0.18 1" specular="0.08" shininess="0.12"/>
+    <material name="label_mat" rgba="0.93 0.82 0.46 1" specular="0.05" shininess="0.10"/>
+    <material name="camera_body_mat" rgba="0.08 0.085 0.09 1" specular="0.18" shininess="0.22"/>
+    <material name="camera_lens_mat" rgba="0.01 0.012 0.014 1" specular="0.28" shininess="0.35"/>
+    <material name="target_marker_mat" rgba="0.0 0.55 1.0 0.28"/>
+
+    <mesh name="wine_jar_mesh" file="materials/wine_jar.stl"/>
+    <mesh name="cropped_lotus_leaf_mesh" file="materials/cropped_lotus_leaf.stl"/>
+    <mesh name="cropped_white_paper_mesh" file="materials/cropped_white_paper.stl"/>
+    <mesh name="bamboo_leaf_mesh" file="materials/bamboo_leaf.stl"/>
+  </asset>
+
+  <worldbody>
+    <light name="key_light" pos="-0.6 -0.7 1.6" dir="0.35 0.35 -1" directional="true"
+           diffuse="0.56 0.54 0.50" specular="0.22 0.21 0.19" castshadow="true"/>
+    <light name="fill_light" pos="0.8 0.5 1.2" dir="-0.55 -0.25 -1" directional="true"
+           diffuse="0.20 0.22 0.26" specular="0.06 0.07 0.09" castshadow="false"/>
+    <geom name="floor" pos="0 0 -0.02" size="0 0 0.05" type="plane" material="ground_material"/>
+
+    <body name="factory_shell">
+      <geom name="factory_floor_slab" type="box" pos="0 0 -0.025" size="1.35 1.00 0.010"
+            material="factory_floor_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_y_positive" type="box" pos="0 0.95 0.42" size="1.35 0.035 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_y_negative" type="box" pos="0 -0.95 0.42" size="1.35 0.035 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_x_negative_left" type="box" pos="-1.18 -0.67 0.42" size="0.035 0.28 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_x_negative_right" type="box" pos="-1.18 0.67 0.42" size="0.035 0.28 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_x_positive_left" type="box" pos="1.18 -0.67 0.42" size="0.035 0.28 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+      <geom name="factory_wall_x_positive_right" type="box" pos="1.18 0.67 0.42" size="0.035 0.28 0.44"
+            material="factory_wall_mat" contype="0" conaffinity="0"/>
+    </body>
+
+    <body name="conveyor">
+      <geom name="conveyor_frame" type="box" pos="0 0 0.045" size="1.10 0.30 0.045" material="conveyor_frame_mat"/>
+      <geom name="conveyor_belt" type="box" pos="0 0 0.107" size="1.04 0.235 0.018" material="conveyor_belt_mat"/>
+      <geom name="conveyor_left_rail" type="box" pos="0 0.262 0.130" size="1.10 0.014 0.045" material="conveyor_rail_mat"/>
+      <geom name="conveyor_right_rail" type="box" pos="0 -0.262 0.130" size="1.10 0.014 0.045" material="conveyor_rail_mat"/>
+      <geom name="belt_marker_0" type="box" pos="-0.78 -0.07 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_1" type="box" pos="-0.52 0.04 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_2" type="box" pos="-0.26 -0.07 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_3" type="box" pos="0.00 0.04 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_4" type="box" pos="0.26 -0.07 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_5" type="box" pos="0.52 0.04 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <geom name="belt_marker_6" type="box" pos="0.78 -0.07 0.128" euler="0 0 -0.52" size="0.080 0.006 0.002" material="belt_marker_mat"/>
+      <site name="conveyor_entry_site" pos="-0.86 0 0.16" type="sphere" size="0.012" rgba="0 0.6 1 0.7"/>
+      <site name="conveyor_stop_site" pos="0 0.05 0.16" type="sphere" size="0.012" rgba="1 0 0 0.75"/>
+      <site name="conveyor_exit_site" pos="0.86 0 0.16" type="sphere" size="0.012" rgba="0 0.9 0.3 0.7"/>
+    </body>
+
+    <body name="station_wine_jar" pos="0 0.05 0.125">
+      <geom name="wine_jar_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat" contype="0" conaffinity="0"/>
+      <geom name="wine_jar_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
+            material="jar_collision_mat" mass="8" friction="1 1 1"/>
+      <geom name="wine_jar_shoulder_collision" type="cylinder" pos="0 0 0.405" size="0.11 0.055"
+            material="jar_collision_mat" mass="2" friction="1 1 1"/>
+      <geom name="wine_jar_neck_collision" type="cylinder" pos="0 0 0.4525" size="0.06 0.0075"
+            material="jar_collision_mat" mass="1" friction="1 1 1"/>
+      <site name="jar_mouth_center" pos="0 0 0.46" type="sphere" size="0.012" rgba="1 0 0 0.8"/>
+      <body name="preloaded_lotus_leaf" pos="0 0 0.462" euler="0 0 0.42">
+        <geom name="preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_mesh" material="lotus_mat"
+              mass="0.02" friction="1 1 1"/>
+      </body>
+      <body name="preloaded_white_paper" pos="0 0 0.467" euler="0 0 -0.18">
+        <geom name="preloaded_white_paper_geom" type="mesh" mesh="cropped_white_paper_mesh" material="paper_mat"
+              mass="0.01" friction="1 1 1"/>
+      </body>
+      <body name="preloaded_ceramic_disc" pos="0 0 0.476">
+        <geom name="preloaded_ceramic_disc_geom" type="cylinder" size="0.055 0.006" material="ceramic_mat"
+              mass="0.20" friction="1 1 1"/>
+        <site name="ceramic_disc_center_site" pos="0 0 0.007" type="sphere" size="0.007" rgba="1 0 0 0.6"/>
+      </body>
+      <geom name="mouth_material_support_collision" type="cylinder" pos="0 0 0.485"
+            size="0.130 0.003" rgba="0.2 0.6 0.2 0.0" mass="0.02"
+            friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+      <body name="mouth_material_retaining_lip" pos="0 0 0.491">
+        <geom name="mouth_material_lip_00" type="capsule" fromto="0.1350 -0.0268 0 0.1350 0.0268 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_01" type="capsule" fromto="0.1247 0.0517 0 0.1032 0.0865 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_02" type="capsule" fromto="0.0865 0.1032 0 0.0517 0.1247 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_03" type="capsule" fromto="0.0268 0.1350 0 -0.0268 0.1350 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_04" type="capsule" fromto="-0.0517 0.1247 0 -0.0865 0.1032 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_05" type="capsule" fromto="-0.1032 0.0865 0 -0.1247 0.0517 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_06" type="capsule" fromto="-0.1350 0.0268 0 -0.1350 -0.0268 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_07" type="capsule" fromto="-0.1247 -0.0517 0 -0.1032 -0.0865 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_08" type="capsule" fromto="-0.0865 -0.1032 0 -0.0517 -0.1247 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_09" type="capsule" fromto="-0.0268 -0.1350 0 0.0268 -0.1350 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_10" type="capsule" fromto="0.0517 -0.1247 0 0.0865 -0.1032 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+        <geom name="mouth_material_lip_11" type="capsule" fromto="0.1032 -0.0865 0 0.1247 -0.0517 0" size="0.006"
+              rgba="0.1 0.4 0.1 0.0" friction="8.0 3.0 2.0" condim="6" contype="2" conaffinity="1"/>
+      </body>
+      <site name="leaf_cross_target_0" pos="0 0 0.494" euler="0 0 0" type="box" size="0.018 0.018 0.002"
+            material="target_marker_mat"/>
+      <site name="leaf_cross_target_90" pos="0 0 0.500" euler="0 0 1.5708" type="box" size="0.018 0.018 0.002"
+            rgba="0 0.85 0.35 0.22"/>
+      <site name="neck_tie_target_site" pos="0 0 0.452" type="sphere" size="0.012" rgba="0 0.7 1 0.75"/>
+      <body name="final_tie_band_visual" pos="0 0 0.452">
+        <geom name="final_tie_band_visual_geom_00" type="capsule" fromto="0.0630 -0.0063 0 0.0630 0.0063 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_01" type="capsule" fromto="0.0606 0.0185 0 0.0558 0.0301 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_02" type="capsule" fromto="0.0490 0.0401 0 0.0401 0.0490 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_03" type="capsule" fromto="0.0301 0.0558 0 0.0185 0.0606 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_04" type="capsule" fromto="0.0063 0.0630 0 -0.0063 0.0630 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_05" type="capsule" fromto="-0.0185 0.0606 0 -0.0301 0.0558 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_06" type="capsule" fromto="-0.0401 0.0490 0 -0.0490 0.0401 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_07" type="capsule" fromto="-0.0558 0.0301 0 -0.0606 0.0185 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_08" type="capsule" fromto="-0.0630 0.0063 0 -0.0630 -0.0063 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_09" type="capsule" fromto="-0.0606 -0.0185 0 -0.0558 -0.0301 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_10" type="capsule" fromto="-0.0490 -0.0401 0 -0.0401 -0.0490 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_11" type="capsule" fromto="-0.0301 -0.0558 0 -0.0185 -0.0606 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_12" type="capsule" fromto="-0.0063 -0.0630 0 0.0063 -0.0630 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_13" type="capsule" fromto="0.0185 -0.0606 0 0.0301 -0.0558 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_14" type="capsule" fromto="0.0401 -0.0490 0 0.0490 -0.0401 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+        <geom name="final_tie_band_visual_geom_15" type="capsule" fromto="0.0558 -0.0301 0 0.0606 -0.0185 0" size="0.0035"
+              rgba="0.02 0.02 0.02 0.0" contype="0" conaffinity="0"/>
+      </body>
+    </body>
+
+    <body name="left_robot_pedestal" pos="-0.12 0.52 0.06">
+      <geom name="left_robot_pedestal_geom" type="box" size="0.22 0.22 0.06" material="base_mat"
+            mass="2000" friction="1 1 1"/>
+    </body>
+    <body name="right_robot_pedestal" pos="-0.12 -0.31 0.06">
+      <geom name="right_robot_pedestal_geom" type="box" size="0.22 0.22 0.06" material="base_mat"
+            mass="2000" friction="1 1 1"/>
+    </body>
+
+    <body name="left_material_table" pos="-0.75 0.56 0.24">
+      <geom name="left_material_table_geom" type="box" size="0.46 0.26 0.24" material="workbench_mat"
+            mass="2000" friction="1 1 1"/>
+    </body>
+    <body name="staged_label_paper" pos="-0.51 0.74 0.4815" euler="0 0 0">
+      <freejoint name="staged_label_paper_freejoint"/>
+      <body name="staged_label_paper_seg_00" pos="-0.1750 0 0">
+        <geom name="staged_label_paper_seg_00_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+              mass="0.0012" friction="4 2 1" condim="6"/>
+        <body name="staged_label_paper_seg_01" pos="0.0350 0 0">
+          <joint name="staged_label_paper_bend_01" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                 range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+          <geom name="staged_label_paper_seg_01_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                mass="0.0012" friction="4 2 1" condim="6"/>
+          <body name="staged_label_paper_seg_02" pos="0.0350 0 0">
+            <joint name="staged_label_paper_bend_02" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                   range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+            <geom name="staged_label_paper_seg_02_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                  mass="0.0012" friction="4 2 1" condim="6"/>
+            <body name="staged_label_paper_seg_03" pos="0.0350 0 0">
+              <joint name="staged_label_paper_bend_03" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                     range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+              <geom name="staged_label_paper_seg_03_geom" type="box" size="0.0800 0.0400 0.0015" material="label_mat"
+                    mass="0.0012" friction="4 2 1" condim="6"/>
+              <site name="label_paper_pick_site" pos="0 0 0.0045" type="sphere" size="0.007" rgba="0 1 0 0.7"/>
+              <site name="label_paper_center_site" pos="0 0 0.0035" type="sphere" size="0.006" rgba="1 0 0 0.6"/>
+              <site name="staged_label_paper_center_site" pos="0 0 0.0035" type="sphere" size="0.006" rgba="1 0 0 0.0"/>
+              <body name="staged_label_paper_seg_04" pos="0.0350 0 0">
+                <joint name="staged_label_paper_bend_04" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                       range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                <geom name="staged_label_paper_seg_04_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                      mass="0.0012" friction="4 2 1" condim="6"/>
+                <body name="staged_label_paper_seg_05" pos="0.0350 0 0">
+                  <joint name="staged_label_paper_bend_05" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                         range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                  <geom name="staged_label_paper_seg_05_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                        mass="0.0012" friction="4 2 1" condim="6"/>
+                  <body name="staged_label_paper_seg_06" pos="0.0350 0 0">
+                    <joint name="staged_label_paper_bend_06" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                           range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                    <geom name="staged_label_paper_seg_06_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                          mass="0.0012" friction="4 2 1" condim="6"/>
+                    <body name="staged_label_paper_seg_07" pos="0.0350 0 0">
+                      <joint name="staged_label_paper_bend_07" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                             range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                      <geom name="staged_label_paper_seg_07_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                            mass="0.0012" friction="4 2 1" condim="6"/>
+                      <body name="staged_label_paper_seg_08" pos="0.0350 0 0">
+                        <joint name="staged_label_paper_bend_08" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                               range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                        <geom name="staged_label_paper_seg_08_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                              mass="0.0012" friction="4 2 1" condim="6"/>
+                        <body name="staged_label_paper_seg_09" pos="0.0350 0 0">
+                          <joint name="staged_label_paper_bend_09" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                                 range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                          <geom name="staged_label_paper_seg_09_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                                mass="0.0012" friction="4 2 1" condim="6"/>
+                          <body name="staged_label_paper_seg_10" pos="0.0350 0 0">
+                            <joint name="staged_label_paper_bend_10" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
+                                   range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
+                            <geom name="staged_label_paper_seg_10_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
+                                  mass="0.0012" friction="4 2 1" condim="6"/>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <body name="global_camera_rig" pos="-0.12 0.105 1.35">
+      <geom name="global_camera_body_geom" type="box" pos="0 0 0" size="0.058 0.018 0.014"
+            material="camera_body_mat" mass="0.4" contype="0" conaffinity="0"/>
+      <geom name="global_camera_left_lens_geom" type="cylinder" pos="-0.025 0 -0.018" size="0.007 0.004"
+            material="camera_lens_mat" mass="0.02" contype="0" conaffinity="0"/>
+      <geom name="global_camera_right_lens_geom" type="cylinder" pos="0.025 0 -0.018" size="0.007 0.004"
+            material="camera_lens_mat" mass="0.02" contype="0" conaffinity="0"/>
+      <camera name="global_top_camera" pos="0 0 -0.02" xyaxes="1 0 0 0 1 0" fovy="48" resolution="1280 720"/>
+    </body>
+
+    <camera name="global_overview_camera" pos="0.05 -0.10 2.05"
+            xyaxes="0.96352 0.26764 0.00000 -0.26617 0.95820 0.10496"
+            fovy="62" resolution="1280 720"/>
+    <camera name="front_conveyor_camera" pos="1.75 0.05 0.70"
+            xyaxes="0.00000 1.00000 0.00000 -0.17987 0.00000 0.98369"
+            fovy="52" resolution="1280 720"/>
+    <camera name="side_overview_camera" pos="0.92 -0.78 0.95"
+            xyaxes="0.66162 0.74984 0.00000 -0.28979 0.25570 0.92230"
+            fovy="52" resolution="1280 720"/>
+    <camera name="production_hero_camera" pos="1.25 -1.05 0.86" xyaxes="0.68 0.73 0 -0.28 0.26 0.92" fovy="42" resolution="1920 1080"/>
+    <camera name="jar_mouth_closeup_camera" pos="0.38 -0.45 0.76" xyaxes="0.75 0.66 0 -0.36 0.41 0.84" fovy="32" resolution="1280 720"/>
+    <camera name="left_vacuum_closeup_camera" pos="-0.52 0.98 0.86" xyaxes="-0.72 0.69 0 -0.33 -0.35 0.88" fovy="36" resolution="1280 720"/>
+    <camera name="right_tie_gun_closeup_camera" pos="-0.52 -0.70 0.78" xyaxes="0.82 -0.57 0 0.28 0.40 0.87" fovy="34" resolution="1280 720"/>
+  </worldbody>
+
+  <equality>
+    <weld name="left_suction_weld_leaf_top" body1="left_vacuum_end_effector" body2="staged_bamboo_leaf_top_seg_05"
+          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+    <weld name="left_suction_weld_leaf_bottom" body1="left_vacuum_end_effector" body2="staged_bamboo_leaf_bottom_seg_05"
+          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+    <weld name="left_suction_weld_label_paper" body1="left_vacuum_end_effector" body2="staged_label_paper_seg_03"
+          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+    <weld name="table_static_friction_weld_leaf_bottom" body1="left_material_table" body2="staged_bamboo_leaf_bottom_seg_05"
+          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
+    <weld name="mouth_static_friction_weld_leaf_top" body1="station_wine_jar" body2="staged_bamboo_leaf_top_seg_05"
+          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
+    <weld name="mouth_static_friction_weld_leaf_bottom" body1="station_wine_jar" body2="staged_bamboo_leaf_bottom_seg_05"
+          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
+    <weld name="mouth_static_friction_weld_label_paper" body1="station_wine_jar" body2="staged_label_paper_seg_03"
+          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
+  </equality>
+
+  <keyframe>
+    <key name="production_home"
+         qpos="0.000000 -0.610865 -1.221730 0.000000 1.832596 0.000000 0.000000 -0.610865 -1.221730 0.000000 1.832596 0.000000 -0.580000 0.560000 0.481500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.580000 0.560000 0.484500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.510000 0.740000 0.481500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000"
+         ctrl="0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+</mujoco>

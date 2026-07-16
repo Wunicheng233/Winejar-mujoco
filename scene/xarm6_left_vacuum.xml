@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="left xarm6">
+  <compiler angle="radian" autolimits="true" meshdir="assets" />
+  <option integrator="implicitfast" gravity="0 0 -9.81" />
+  <asset>
+    <material name="left_white" rgba="0.86 0.88 0.89 1" specular="0.32" shininess="0.42" reflectance="0.04" />
+    <material name="left_gray" rgba="0.32 0.35 0.37 1" specular="0.55" shininess="0.62" reflectance="0.10" />
+    <material name="left_black" rgba="0.045 0.052 0.058 1" specular="0.16" shininess="0.24" reflectance="0.02" />
+    <material name="left_vacuum_rubber" rgba="0.02 0.025 0.025 1" specular="0.06" shininess="0.12" />
+    <mesh file="link_base.stl" name="left_link_base" />
+    <mesh file="link1.stl" name="left_link1" />
+    <mesh file="link2.stl" name="left_link2" />
+    <mesh file="link3.stl" name="left_link3" />
+    <mesh file="link4.stl" name="left_link4" />
+    <mesh file="link5.stl" name="left_link5" />
+    <mesh file="link6.stl" name="left_link6" />
+    <mesh file="end_tool.stl" name="left_end_tool" />
+  </asset>
+  <default>
+    <default class="left_xarm6">
+      <geom type="mesh" material="left_white" contype="0" conaffinity="0" />
+      <joint axis="0 0 1" armature="0.1" range="-6.28319 6.28319" frictionloss="1" />
+      <default class="left_size1">
+        <joint damping="10" />
+      </default>
+      <default class="left_size2">
+        <joint damping="5" />
+      </default>
+      <default class="left_size3">
+        <joint damping="2" />
+      </default>
+      <default class="left_visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" />
+      </default>
+      <site size="0.001" rgba="1 0 0 1" group="4" />
+    </default>
+  </default>
+  <worldbody>
+    <body name="left_line_base" pos="-0.12 0.52 0.12" childclass="left_xarm6" euler="0 0 -1.5708">
+      <inertial pos="-0.021131 -0.0016302 0.056488" quat="0.696843 0.20176 0.10388 0.680376" mass="0.88556" diaginertia="0.00382023 0.00335282 0.00167725" />
+      <geom mesh="left_link_base" />
+      <body name="left_link1" pos="0 0 0.267">
+        <inertial pos="-0.0002 0.02905 -0.01233" quat="0.978953 -0.202769 -0.00441617 -0.0227264" mass="2.382" diaginertia="0.00569127 0.00533384 0.00293865" />
+        <joint name="left_joint1" class="left_size1" />
+        <geom mesh="left_link1" />
+        <body name="left_link2" quat="1 -1 0 0">
+          <inertial pos="0.03881 -0.22783 0.03496" quat="0.635305 0.753023 0.170976 -0.010531" mass="2.2675" diaginertia="0.0294477 0.0281783 0.00383449" />
+          <joint name="left_joint2" range="-2.059 2.0944" class="left_size1" />
+          <geom mesh="left_link2" />
+          <body name="left_link3" pos="0.0535 -0.2845 0">
+            <inertial pos="0.07041 0.11631 0.0107" quat="0.845838 0.425539 -0.293179 0.132369" mass="1.875" diaginertia="0.00714132 0.00699471 0.00196753" />
+            <joint name="left_joint3" range="-3.927 0.19198" class="left_size2" />
+            <geom mesh="left_link3" />
+            <body name="left_link4" pos="0.0775 0.3425 0" quat="1 -1 0 0">
+              <inertial pos="-0.00018 0.01798 -0.02291" quat="0.99929 -0.0369702 0.00179434 -0.00701174" mass="1.3192" diaginertia="0.00489614 0.00447403 0.00132609" />
+              <joint name="left_joint4" class="left_size2" />
+              <geom mesh="left_link4" />
+              <body name="left_link5" pos="0 0 0" quat="1 1 0 0">
+                <inertial pos="0.0651 0.03096 0.00315" quat="-0.223008 0.771309 0.16027 0.574163" mass="1.33854" diaginertia="0.00241824 0.00213367 0.00108731" />
+                <joint name="left_joint5" range="-1.69297 3.14159" class="left_size3" />
+                <geom mesh="left_link5" />
+                <body name="left_link6" pos="0.076 0.097 0" quat="1 -1 0 0">
+                  <inertial pos="0.00763576 -0.00272358 0.0307029" quat="0.634077 -0.153028 -0.073538 0.754401" mass="0.838615" diaginertia="0.00129456 0.00116006 0.00078716" />
+                  <joint name="left_joint6" class="left_size3" />
+                  <geom material="left_gray" mesh="left_end_tool" quat="0 0 0 1" />
+                  <body name="left_vacuum_end_effector" pos="0 0 0.015">
+                    <inertial pos="0 0 0.045" mass="0.25" diaginertia="0.00018 0.00018 0.00008" />
+                    <geom name="left_vacuum_mount_geom" type="cylinder" pos="0 0 -0.008" size="0.022 0.024" material="left_gray" mass="0.12" friction="0.8 0.8 0.8" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_center_connector_geom" type="cylinder" pos="0 0 0.022" size="0.010 0.014" material="left_black" mass="0.025" friction="0.8 0.8 0.8" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_crossbar_geom" type="box" pos="0 0 0.034" size="0.052 0.010 0.006" material="left_black" mass="0.04" friction="0.8 0.8 0.8" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_stem_left_geom" type="cylinder" pos="-0.040 0 0.054" size="0.007 0.026" material="left_black" mass="0.025" friction="0.8 0.8 0.8" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_stem_right_geom" type="cylinder" pos="0.040 0 0.054" size="0.007 0.026" material="left_black" mass="0.025" friction="0.8 0.8 0.8" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_cup_left_geom" type="cylinder" pos="-0.040 0 0.086" size="0.026 0.008" material="left_vacuum_rubber" mass="0.04" friction="1.2 1.2 1.2" contype="0" conaffinity="0" />
+                    <geom name="left_vacuum_cup_right_geom" type="cylinder" pos="0.040 0 0.086" size="0.026 0.008" material="left_vacuum_rubber" mass="0.04" friction="1.2 1.2 1.2" contype="0" conaffinity="0" />
+                    <site name="left_vacuum_suction_site" pos="0 0 0.087" type="sphere" size="0.008" rgba="0 0.8 1 0.85" />
+                    <site name="left_link_tcp" pos="0 0 0.087" type="sphere" size="0.01" rgba="1 0 0 0" group="1" />
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <velocity name="left_vel1" joint="left_joint1" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-50 50" />
+    <velocity name="left_vel2" joint="left_joint2" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-50 50" />
+    <velocity name="left_vel3" joint="left_joint3" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-30 30" />
+    <velocity name="left_vel4" joint="left_joint4" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-30 30" />
+    <velocity name="left_vel5" joint="left_joint5" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-20 20" />
+    <velocity name="left_vel6" joint="left_joint6" kv="1000" ctrlrange="-3.14159 3.14159" forcerange="-20 20" />
+  </actuator>
+</mujoco>

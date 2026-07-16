@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local environments and editor state
+.venv/
+.vscode/
+.idea/
+
+# Generated simulation outputs
+data/
+*.mp4
+*.avi
+*.mov
+
+# Runtime and renderer artifacts
+*.log
+*.tmp
+

@@ -1,0 +1,116 @@
+<mujoco model="winejar vacuum leaf placement scene">
+  <include file="xarm6_vacuum.xml"/>
+
+  <option integrator="implicitfast" gravity="0 0 -9.81" timestep="0.001"/>
+  <statistic center="0.36 0.24 0.42" extent="1.05"/>
+
+  <visual>
+    <quality shadowsize="2048"/>
+    <headlight diffuse="0.28 0.28 0.27" ambient="0.15 0.16 0.18" specular="0.16 0.16 0.16"/>
+    <rgba haze="0.72 0.76 0.80 1"/>
+    <global azimuth="135" elevation="-25"/>
+  </visual>
+
+  <asset>
+    <texture type="2d" name="workbench_texture" file="textures/workbench_laminate.png"/>
+    <material name="table_laminate" texture="workbench_texture" texuniform="true" texrepeat="2 2"
+              rgba="0.66 0.68 0.70 1" specular="0.14" shininess="0.18" reflectance="0.02"/>
+    <texture type="skybox" builtin="gradient" rgb1="0.82 0.86 0.90" rgb2="0.26 0.30 0.34"
+             width="512" height="3072"/>
+    <texture type="2d" name="ground_texture" builtin="checker"
+             rgb1="0.18 0.19 0.20" rgb2="0.21 0.22 0.23" width="512" height="512"/>
+    <material name="ground_material" texture="ground_texture" texuniform="true" texrepeat="18 18"
+              specular="0.08" shininess="0.12" reflectance="0.02"/>
+
+    <material name="base_mat" rgba="0.25 0.27 0.28 1" specular="0.15" shininess="0.20"/>
+    <material name="jar_mat" rgba="0.48 0.23 0.11 1" specular="0.18" shininess="0.32"/>
+    <material name="jar_collision_mat" rgba="0.48 0.23 0.11 0.12"/>
+    <material name="ceramic_mat" rgba="0.72 0.34 0.12 1" specular="0.18" shininess="0.28"/>
+    <material name="bamboo_mat_top" rgba="0.34 0.58 0.22 1" specular="0.08" shininess="0.12"/>
+    <material name="bamboo_mat_bottom" rgba="0.26 0.48 0.18 1" specular="0.08" shininess="0.12"/>
+    <material name="target_mat" rgba="0.1 0.45 1.0 0.35"/>
+    <material name="camera_body_mat" rgba="0.08 0.085 0.09 1" specular="0.18" shininess="0.22"/>
+    <material name="camera_lens_mat" rgba="0.01 0.012 0.014 1" specular="0.28" shininess="0.35"/>
+
+    <mesh name="wine_jar_mesh" file="materials/wine_jar.stl"/>
+    <mesh name="bamboo_leaf_mesh" file="materials/bamboo_leaf.stl"/>
+  </asset>
+
+  <worldbody>
+    <light name="key_light" pos="-0.35 -0.55 1.4" dir="0.25 0.35 -1" directional="true"
+           diffuse="0.52 0.50 0.46" specular="0.22 0.21 0.19" castshadow="true"/>
+    <light name="fill_light" pos="0.75 0.45 1.05" dir="-0.5 -0.25 -1" directional="true"
+           diffuse="0.18 0.21 0.26" specular="0.06 0.07 0.09" castshadow="false"/>
+    <geom name="floor" pos="0 0 -0.02" size="0 0 0.05" type="plane" material="ground_material"/>
+
+    <body name="robot_base_pedestal" pos="0 0 0.10">
+      <geom name="robot_base_pedestal_geom" type="box" size="0.22 0.22 0.10" material="base_mat"
+            mass="2000" friction="1 1 1"/>
+    </body>
+
+    <body name="wine_jar" pos="0.55 0 0">
+      <geom name="wine_jar_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat"
+            contype="0" conaffinity="0"/>
+      <geom name="wine_jar_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
+            material="jar_collision_mat" mass="8" friction="1 1 1"/>
+      <geom name="wine_jar_shoulder_collision" type="cylinder" pos="0 0 0.405" size="0.11 0.055"
+            material="jar_collision_mat" mass="2" friction="1 1 1"/>
+      <geom name="wine_jar_neck_collision" type="cylinder" pos="0 0 0.4525" size="0.06 0.0075"
+            material="jar_collision_mat" mass="1" friction="1 1 1"/>
+      <site name="jar_mouth_center" pos="0 0 0.46" type="sphere" size="0.012" rgba="1 0 0 0.8"/>
+    </body>
+
+    <body name="ceramic_disc_on_jar" pos="0.55 0 0.468">
+      <geom name="ceramic_disc_geom" type="cylinder" size="0.055 0.006" material="ceramic_mat"
+            mass="0.20" friction="1 1 1"/>
+      <site name="ceramic_disc_center_site" pos="0 0 0.007" type="sphere" size="0.007" rgba="1 0 0 0.7"/>
+      <site name="jar_leaf_target_0" pos="0 0 0.016" euler="0 0 0" type="box" size="0.018 0.018 0.002"
+            rgba="0.1 0.45 1.0 0.18"/>
+      <site name="jar_leaf_target_90" pos="0 0 0.020" euler="0 0 1.5708" type="box" size="0.018 0.018 0.002"
+            rgba="0.0 0.85 0.35 0.18"/>
+    </body>
+
+    <body name="material_table" pos="0.00 0.45 0.25">
+      <geom name="material_table_geom" type="box" size="0.44 0.30 0.25" material="table_laminate"
+            mass="2000" friction="1 1 1"/>
+    </body>
+
+    <body name="bamboo_leaf_bottom" pos="-0.02 0.45 0.512" euler="0 0 1.5708">
+      <freejoint name="bamboo_leaf_bottom_freejoint"/>
+      <geom name="bamboo_leaf_bottom_geom" type="mesh" mesh="bamboo_leaf_mesh" material="bamboo_mat_bottom"
+            mass="0.01" friction="1 1 1"/>
+      <site name="bamboo_leaf_bottom_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="bamboo_leaf_bottom_pick_site" pos="0 0 0.004" type="sphere" size="0.007" rgba="0 1 0 0.7"/>
+      <site name="bamboo_leaf_bottom_place_target" pos="0 0 0.004" type="box" size="0.018 0.018 0.002"
+            rgba="0.0 0.4 1.0 0.18"/>
+    </body>
+
+    <body name="bamboo_leaf_top" pos="-0.02 0.45 0.516" euler="0 0 1.5708">
+      <freejoint name="bamboo_leaf_top_freejoint"/>
+      <geom name="bamboo_leaf_top_geom" type="mesh" mesh="bamboo_leaf_mesh" material="bamboo_mat_top"
+            mass="0.01" friction="1 1 1"/>
+      <site name="bamboo_leaf_top_center_site" pos="0 0 0.003" type="sphere" size="0.006" rgba="1 0 0 0.7"/>
+      <site name="bamboo_leaf_top_pick_site" pos="0 0 0.004" type="sphere" size="0.007" rgba="0 1 0 0.7"/>
+      <site name="leaf_stack_pick_site" pos="0 0 0.006" type="sphere" size="0.009" rgba="1 0 1 0.75"/>
+    </body>
+
+    <body name="global_camera_rig" pos="0.27 0.20 1.85">
+      <geom name="global_camera_body_geom" type="box" pos="0 0 0" size="0.055 0.018 0.014"
+            material="camera_body_mat" mass="0.4" contype="0" conaffinity="0"/>
+      <geom name="global_camera_left_lens_geom" type="cylinder" pos="-0.024 0 -0.018" size="0.007 0.004"
+            material="camera_lens_mat" mass="0.02" contype="0" conaffinity="0"/>
+      <geom name="global_camera_right_lens_geom" type="cylinder" pos="0.024 0 -0.018" size="0.007 0.004"
+            material="camera_lens_mat" mass="0.02" contype="0" conaffinity="0"/>
+      <geom name="global_camera_mount_geom" type="cylinder" pos="0 0 0.08" size="0.012 0.08"
+            material="camera_body_mat" mass="0.3" contype="0" conaffinity="0"/>
+      <camera name="global_overhead_camera" pos="0 0 -0.022" xyaxes="1 0 0 0 1 0" fovy="48" resolution="1280 720"/>
+    </body>
+  </worldbody>
+
+  <equality>
+    <weld name="suction_weld_top" body1="vacuum_end_effector" body2="bamboo_leaf_top"
+          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+    <weld name="suction_weld_bottom" body1="vacuum_end_effector" body2="bamboo_leaf_bottom"
+          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+  </equality>
+</mujoco>
