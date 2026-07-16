@@ -36,7 +36,7 @@
     </default>
   </default>
   <worldbody>
-    <body name="right_line_base" pos="-0.12 -0.31 0.12" childclass="right_xarm6" euler="0 0 1.5708">
+    <body name="right_line_base" pos="0.40 -0.31 0.12" childclass="right_xarm6" euler="0 0 1.5708">
       <inertial pos="-0.021131 -0.0016302 0.056488" quat="0.696843 0.20176 0.10388 0.680376" mass="0.88556" diaginertia="0.00382023 0.00335282 0.00167725" />
       <geom mesh="right_link_base" />
       <body name="right_link1" pos="0 0 0.267">

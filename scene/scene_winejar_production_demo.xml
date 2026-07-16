@@ -2,6 +2,7 @@
   <include file="xarm6_left_vacuum.xml"/>
   <include file="xarm6_right_tie_gun.xml"/>
   <include file="compliant_bamboo_leaf_pair.xml"/>
+  <include file="production_line_instances.xml"/>
 
   <compiler angle="radian" meshdir="assets"/>
 
@@ -94,7 +95,7 @@
       <site name="conveyor_exit_site" pos="0.86 0 0.16" type="sphere" size="0.012" rgba="0 0.9 0.3 0.7"/>
     </body>
 
-    <body name="station_wine_jar" pos="0 0.05 0.125">
+    <body name="station_wine_jar" pos="-2.40 0.05 0.125">
       <geom name="wine_jar_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat" contype="0" conaffinity="0"/>
       <geom name="wine_jar_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
             material="jar_collision_mat" mass="8" friction="1 1 1"/>
@@ -190,7 +191,7 @@
       <geom name="left_robot_pedestal_geom" type="box" size="0.22 0.22 0.06" material="base_mat"
             mass="2000" friction="1 1 1"/>
     </body>
-    <body name="right_robot_pedestal" pos="-0.12 -0.31 0.06">
+    <body name="right_robot_pedestal" pos="0.40 -0.31 0.06">
       <geom name="right_robot_pedestal_geom" type="box" size="0.22 0.22 0.06" material="base_mat"
             mass="2000" friction="1 1 1"/>
     </body>
@@ -199,78 +200,7 @@
       <geom name="left_material_table_geom" type="box" size="0.46 0.26 0.24" material="workbench_mat"
             mass="2000" friction="1 1 1"/>
     </body>
-    <body name="staged_label_paper" pos="-0.51 0.74 0.4815" euler="0 0 0">
-      <freejoint name="staged_label_paper_freejoint"/>
-      <body name="staged_label_paper_seg_00" pos="-0.1750 0 0">
-        <geom name="staged_label_paper_seg_00_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-              mass="0.0012" friction="4 2 1" condim="6"/>
-        <body name="staged_label_paper_seg_01" pos="0.0350 0 0">
-          <joint name="staged_label_paper_bend_01" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                 range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-          <geom name="staged_label_paper_seg_01_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                mass="0.0012" friction="4 2 1" condim="6"/>
-          <body name="staged_label_paper_seg_02" pos="0.0350 0 0">
-            <joint name="staged_label_paper_bend_02" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                   range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-            <geom name="staged_label_paper_seg_02_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                  mass="0.0012" friction="4 2 1" condim="6"/>
-            <body name="staged_label_paper_seg_03" pos="0.0350 0 0">
-              <joint name="staged_label_paper_bend_03" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                     range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-              <geom name="staged_label_paper_seg_03_geom" type="box" size="0.0800 0.0400 0.0015" material="label_mat"
-                    mass="0.0012" friction="4 2 1" condim="6"/>
-              <site name="label_paper_pick_site" pos="0 0 0.0045" type="sphere" size="0.007" rgba="0 1 0 0.7"/>
-              <site name="label_paper_center_site" pos="0 0 0.0035" type="sphere" size="0.006" rgba="1 0 0 0.6"/>
-              <site name="staged_label_paper_center_site" pos="0 0 0.0035" type="sphere" size="0.006" rgba="1 0 0 0.0"/>
-              <body name="staged_label_paper_seg_04" pos="0.0350 0 0">
-                <joint name="staged_label_paper_bend_04" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                       range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                <geom name="staged_label_paper_seg_04_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                      mass="0.0012" friction="4 2 1" condim="6"/>
-                <body name="staged_label_paper_seg_05" pos="0.0350 0 0">
-                  <joint name="staged_label_paper_bend_05" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                         range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                  <geom name="staged_label_paper_seg_05_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                        mass="0.0012" friction="4 2 1" condim="6"/>
-                  <body name="staged_label_paper_seg_06" pos="0.0350 0 0">
-                    <joint name="staged_label_paper_bend_06" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                           range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                    <geom name="staged_label_paper_seg_06_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                          mass="0.0012" friction="4 2 1" condim="6"/>
-                    <body name="staged_label_paper_seg_07" pos="0.0350 0 0">
-                      <joint name="staged_label_paper_bend_07" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                             range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                      <geom name="staged_label_paper_seg_07_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                            mass="0.0012" friction="4 2 1" condim="6"/>
-                      <body name="staged_label_paper_seg_08" pos="0.0350 0 0">
-                        <joint name="staged_label_paper_bend_08" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                               range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                        <geom name="staged_label_paper_seg_08_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                              mass="0.0012" friction="4 2 1" condim="6"/>
-                        <body name="staged_label_paper_seg_09" pos="0.0350 0 0">
-                          <joint name="staged_label_paper_bend_09" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                                 range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                          <geom name="staged_label_paper_seg_09_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                                mass="0.0012" friction="4 2 1" condim="6"/>
-                          <body name="staged_label_paper_seg_10" pos="0.0350 0 0">
-                            <joint name="staged_label_paper_bend_10" type="hinge" axis="0 1 0" pos="-0.0175 0 0"
-                                   range="-1.10 1.10" damping="0.010" stiffness="0.040" armature="0.0002" limited="true"/>
-                            <geom name="staged_label_paper_seg_10_geom" type="box" size="0.0350 0.0400 0.0015" material="label_mat"
-                                  mass="0.0012" friction="4 2 1" condim="6"/>
-                          </body>
-                        </body>
-                      </body>
-                    </body>
-                  </body>
-                </body>
-              </body>
-            </body>
-          </body>
-        </body>
-      </body>
-    </body>
-
-    <body name="global_camera_rig" pos="-0.12 0.105 1.35">
+    <body name="global_camera_rig" pos="0.14 0.105 1.35">
       <geom name="global_camera_body_geom" type="box" pos="0 0 0" size="0.058 0.018 0.014"
             material="camera_body_mat" mass="0.4" contype="0" conaffinity="0"/>
       <geom name="global_camera_left_lens_geom" type="cylinder" pos="-0.025 0 -0.018" size="0.007 0.004"
@@ -300,21 +230,13 @@
           active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
     <weld name="left_suction_weld_leaf_bottom" body1="left_vacuum_end_effector" body2="staged_bamboo_leaf_bottom_seg_05"
           active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
-    <weld name="left_suction_weld_label_paper" body1="left_vacuum_end_effector" body2="staged_label_paper_seg_03"
-          active="false" solref="0.004 1" solimp="0.95 0.99 0.001"/>
+    <weld name="table_static_friction_weld_leaf_top" body1="left_material_table" body2="staged_bamboo_leaf_top_seg_05"
+          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
     <weld name="table_static_friction_weld_leaf_bottom" body1="left_material_table" body2="staged_bamboo_leaf_bottom_seg_05"
           active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
     <weld name="mouth_static_friction_weld_leaf_top" body1="station_wine_jar" body2="staged_bamboo_leaf_top_seg_05"
           active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
     <weld name="mouth_static_friction_weld_leaf_bottom" body1="station_wine_jar" body2="staged_bamboo_leaf_bottom_seg_05"
           active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
-    <weld name="mouth_static_friction_weld_label_paper" body1="station_wine_jar" body2="staged_label_paper_seg_03"
-          active="false" solref="0.030 1" solimp="0.70 0.95 0.010"/>
   </equality>
-
-  <keyframe>
-    <key name="production_home"
-         qpos="0.000000 -0.610865 -1.221730 0.000000 1.832596 0.000000 0.000000 -0.610865 -1.221730 0.000000 1.832596 0.000000 -0.580000 0.560000 0.481500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.580000 0.560000 0.484500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 -0.510000 0.740000 0.481500 1.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000"
-         ctrl="0 0 0 0 0 0 0 0 0 0 0 0"/>
-  </keyframe>
 </mujoco>

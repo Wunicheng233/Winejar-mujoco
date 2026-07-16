@@ -61,12 +61,6 @@ def make_left_production_arm(clock: AnimationClock, hold_right_at_current: bool 
                 "left_suction_weld_leaf_bottom",
                 "staged_bamboo_leaf_bottom_seg_05",
             ),
-            (
-                "staged_label_paper",
-                "label_paper_pick_site",
-                "left_suction_weld_label_paper",
-                "staged_label_paper_seg_03",
-            ),
         ],
         suction_threshold_m=0.010,
         hold_joint_names=right_joint_names,

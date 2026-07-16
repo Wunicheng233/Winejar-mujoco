@@ -15,18 +15,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from mujoco_xarm6.production_demo.animation import (  # noqa: E402
-    phase_conveyor_entry,
-    phase_conveyor_exit,
-    phase_left_arm_loading,
-    phase_tie_gun,
-    set_final_tie_alpha,
-    set_loaded_tie_alpha,
-    set_tie_gun_jaw_state,
-)
+from mujoco_xarm6.production_demo.line import ProductionLine, hide_debug_markers  # noqa: E402
 from mujoco_xarm6.production_demo.clock import AnimationClock  # noqa: E402
-from mujoco_xarm6.production_demo.constants import OUTPUT_ROOT, RIGHT_SIDE_STANDBY, SCENE_PATH  # noqa: E402
-from mujoco_xarm6.production_demo.scene_ops import joint_qpos_addrs, key_id  # noqa: E402
+from mujoco_xarm6.production_demo.constants import OUTPUT_ROOT, SCENE_PATH  # noqa: E402
 
 
 DEFAULT_CAMERAS = [
@@ -144,14 +135,6 @@ class MultiCameraRecorder:
         }
 
 
-def hide_debug_markers(model: mujoco.MjModel):
-    model.site_rgba[:, 3] = 0.0
-    for material_name in ("target_marker_mat",):
-        mat_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_MATERIAL, material_name)
-        if mat_id >= 0:
-            model.mat_rgba[mat_id, 3] = 0.0
-
-
 def write_png(path: Path, frame: np.ndarray):
     path.parent.mkdir(parents=True, exist_ok=True)
     process = subprocess.Popen(
@@ -234,15 +217,9 @@ def main() -> int:
 
     model = mujoco.MjModel.from_xml_path(str(args.scene))
     data = mujoco.MjData(model)
-    mujoco.mj_resetDataKeyframe(model, data, key_id(model, "production_home"))
     if not args.show_debug_markers:
         hide_debug_markers(model)
-    set_final_tie_alpha(model, 0.0)
-    set_loaded_tie_alpha(model, 1.0)
-    set_tie_gun_jaw_state(model, 0.0)
-    right_joint_addrs = joint_qpos_addrs(model, [f"right_joint{i}" for i in range(1, 7)])
-    data.qpos[right_joint_addrs] = RIGHT_SIDE_STANDBY
-    mujoco.mj_forward(model, data)
+    mujoco.mj_resetData(model, data)
 
     if args.preview_stills:
         preview_paths = save_preview_stills(model, data, output_dir / "preview_stills", cameras, args.width, args.height)
@@ -263,15 +240,11 @@ def main() -> int:
         crf=args.crf,
     )
     clock = AnimationClock(model, data, recorder, realtime=False, speed_scale=args.speed_scale)
-    clock.hold_joints(right_joint_addrs, RIGHT_SIDE_STANDBY)
-    sdk_actions: list[dict] = []
+    production_line = ProductionLine(model, data, clock)
 
     try:
         recorder.sync()
-        phase_conveyor_entry(clock)
-        sdk_actions.extend(phase_left_arm_loading(clock))
-        phase_tie_gun(clock, sdk_actions)
-        phase_conveyor_exit(clock, carry_payload=True)
+        production_line.run()
         recorder.sync()
     finally:
         recorder.close()
