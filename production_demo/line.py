@@ -49,8 +49,9 @@ LEAF_PROFILE = np.array(
     dtype=np.float64,
 )
 # The centered two-branch leaf model uses matching bend values on its left and
-# right branches.  That pulls both free ends down toward the bottle neck.
-TIE_LEAF_PROFILE = np.full(10, 0.34, dtype=np.float64)
+# right branches. Keep this deliberately shallow: the ring gathers the four
+# ends around the neck, it must not fold the leaf stack down into the jar.
+TIE_LEAF_PROFILE = np.full(10, 0.12, dtype=np.float64)
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,10 @@ class ProductionLine:
         self.tie_leaf_contact_samples: list[dict] = []
         self.leaf_lotus_contacts: set[str] = set()
         self.active_tie_gather: LeafGatherTransition | None = None
+        # Flexible joints are passive. Once a tie operation is complete, keep
+        # its gathered shape until that jar leaves the line instead of letting
+        # the leaf springs visibly rebound open.
+        self.gathered_leaf_profiles: dict[str, np.ndarray] = {}
         self.tie_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
@@ -218,6 +223,8 @@ class ProductionLine:
         self.tie_leaf_contact_samples.clear()
         self.leaf_lotus_contacts.clear()
         self.active_tie_gather = None
+        self.gathered_leaf_profiles.clear()
+        self.clock.clear_joint_hold()
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
@@ -304,6 +311,19 @@ class ProductionLine:
         )
         self.actions.append({"label": f"jar {jar.index} start leaf gathering", "code": 0, "duration_s": TIE_GATHER_SECONDS})
 
+    def _refresh_gathered_leaf_hold(self):
+        """Hold all completed tie profiles without constraining arm joints."""
+        if not self.gathered_leaf_profiles:
+            self.clock.clear_joint_hold()
+            return
+        qpos_addrs: list[int] = []
+        values: list[float] = []
+        for leaf, profile in self.gathered_leaf_profiles.items():
+            for segment, bend in enumerate(profile, start=1):
+                qpos_addrs.append(int(self.model.joint(f"{leaf}_bend_{segment:02d}").qposadr[0]))
+                values.append(float(bend))
+        self.clock.hold_joints(np.asarray(qpos_addrs, dtype=int), np.asarray(values, dtype=np.float64))
+
     def _advance_tie_gather(self, dt: float):
         transition = self.active_tie_gather
         if transition is None:
@@ -324,6 +344,9 @@ class ProductionLine:
             mujoco.mj_forward(self.model, self.data)
             self._activate_weld(mouth_weld, jar.body, f"{leaf}_seg_05")
         if transition.elapsed >= TIE_GATHER_SECONDS:
+            for leaf in (jar.top_leaf, jar.bottom_leaf):
+                self.gathered_leaf_profiles[leaf] = TIE_LEAF_PROFILE.copy()
+            self._refresh_gathered_leaf_hold()
             self.actions.append({"label": f"jar {jar.index} complete leaf gathering", "code": 0})
             self.active_tie_gather = None
 
@@ -562,12 +585,14 @@ class ProductionLine:
         self.model.body_pos[body_id(self.model, jar.body)] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
         for leaf, mouth_weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
             self.data.eq_active[self.model.equality(mouth_weld).id] = 0
+            self.gathered_leaf_profiles.pop(leaf, None)
             joint = self.model.joint(f"{leaf}_freejoint")
             qposadr = int(joint.qposadr[0])
             dofadr = int(joint.dofadr[0])
             self.data.qpos[qposadr : qposadr + 3] = np.array([2.4, 0.05, -3.0], dtype=np.float64)
             self.data.qvel[dofadr : dofadr + 6] = 0.0
         self.exited_jars.add(jar.index)
+        self._refresh_gathered_leaf_hold()
         mujoco.mj_forward(self.model, self.data)
 
     def run(self):
