@@ -71,11 +71,11 @@
                     <!-- The ball reaches the same lower plane as the tie ring. Its
                          visible spring is deliberately non-colliding; the ball is the
                          single contact surface used to press the leaf stack. -->
-                    <geom name="right_tie_gun_press_spring_0" type="capsule" fromto="-0.010 0 0.126 0.010 0 0.137" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_1" type="capsule" fromto="0.010 0 0.137 -0.010 0 0.148" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_2" type="capsule" fromto="-0.010 0 0.148 0.010 0 0.159" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_3" type="capsule" fromto="0.010 0 0.159 0.000 0 0.170" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_ball" type="sphere" pos="0 0 0.186" size="0.016" material="right_gray" mass="0.03" friction="1.2 1.0 0.4" condim="6" contype="4" conaffinity="1" />
+                    <geom name="right_tie_gun_press_spring_0" type="capsule" fromto="-0.010 0 0.126 0.010 0 0.138625" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_1" type="capsule" fromto="0.010 0 0.138625 -0.010 0 0.151250" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_2" type="capsule" fromto="-0.010 0 0.151250 0.010 0 0.163875" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_3" type="capsule" fromto="0.010 0 0.163875 0.000 0 0.176500" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_ball" type="sphere" pos="0 0 0.1925" size="0.016" material="right_gray" mass="0.03" friction="1.2 1.0 0.4" condim="6" contype="4" conaffinity="1" />
                     <geom name="right_tie_gun_support_rod_front" type="capsule" fromto="0.000 0.036 0.126 0.000 0.088 0.196" size="0.007" material="right_black" mass="0.02" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />
                     <geom name="right_tie_gun_support_rod_back" type="capsule" fromto="0.000 -0.036 0.126 0.000 -0.088 0.196" size="0.007" material="right_black" mass="0.02" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />
                     <geom name="right_tie_gun_support_rod_left" type="capsule" fromto="-0.036 0.000 0.126 -0.088 0.000 0.196" size="0.007" material="right_black" mass="0.02" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />
@@ -128,8 +128,8 @@
                     <geom name="right_tie_gun_loaded_band_15" type="capsule" fromto="0.09146 -0.03789 0.20100 0.09900 -0.00000 0.20100" size="0.00250" material="right_gray" mass="0.01" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />
                     <site name="right_tie_gun_center_site" pos="0 0 0.14200" type="sphere" size="0.010" rgba="0 0.7 1 0.8" />
                     <site name="right_tie_gun_ring_visual_site" pos="0 0 0.20200" type="sphere" size="0.006" rgba="1 0.5 0 0.65" />
-                    <site name="right_tie_gun_press_ball_center_site" pos="0 0 0.18600" type="sphere" size="0.006" rgba="0.85 0.15 0.15 0.8" />
-                    <site name="right_tie_gun_press_contact_site" pos="0 0 0.20200" type="sphere" size="0.006" rgba="0.85 0.15 0.15 0.8" />
+                    <site name="right_tie_gun_press_ball_center_site" pos="0 0 0.19250" type="sphere" size="0.006" rgba="0.85 0.15 0.15 0.8" />
+                    <site name="right_tie_gun_press_contact_site" pos="0 0 0.20850" type="sphere" size="0.006" rgba="0.85 0.15 0.15 0.8" />
                     <site name="right_tie_gun_approach_site" pos="0 0 0.00000" type="sphere" size="0.008" rgba="0 1 0.3 0.7" />
                     <site name="right_tie_gun_neck_target_site" pos="0 0 0.19000" type="sphere" size="0.008" rgba="1 0 0 0.7" />
                     <site name="right_link_tcp" pos="0 0 0.14200" type="sphere" size="0.009" rgba="1 0 0 0.5" group="1" />

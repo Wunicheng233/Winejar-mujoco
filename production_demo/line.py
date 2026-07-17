@@ -40,11 +40,9 @@ BELT_MAX_X = 0.88
 BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
-PRESS_HOLD_SECONDS = 0.20
-LEAF_PRESS_TRANSITION_SECONDS = 0.18
 LEAF_GATHER_TRANSITION_SECONDS = 0.25
-TIE_RING_CLEARANCE_M = 0.020
-TIE_PRESS_CONTACT_OFFSET_M = 0.018
+TIE_RING_CLEARANCE_M = 0.027
+TIE_PRESS_CONTACT_OFFSET_M = 0.017
 PRESSED_FIRST_LEAF_HEIGHT_M = 0.0235
 PRESSED_SECOND_LEAF_HEIGHT_M = 0.0285
 TIE_PRESS_DESCENT_SECONDS = 0.36
@@ -55,9 +53,12 @@ NATURAL_LEAF_PROFILE = np.array(
     [0.010, 0.015, 0.020, 0.025, 0.030, 0.030, 0.025, 0.020, 0.015, 0.010],
     dtype=np.float64,
 )
-PRESSED_LEAF_PROFILE = np.zeros(10, dtype=np.float64)
+CLAMPED_LEAF_PROFILE = np.array(
+    [-0.08, -0.06, -0.03, 0.18, 0.08, 0.08, 0.18, -0.03, -0.06, -0.08],
+    dtype=np.float64,
+)
 GATHERED_LEAF_PROFILE = np.array(
-    [-0.220, -0.160, -0.100, -0.040, 0.300, 0.300, -0.040, -0.100, -0.160, -0.220],
+    [-0.55, -0.35, 0.42, 0.10, 0.0, 0.0, 0.10, 0.42, -0.35, -0.55],
     dtype=np.float64,
 )
 JARS = (
@@ -213,7 +214,7 @@ class ProductionLine:
             (jar.bottom_leaf, PRESSED_SECOND_LEAF_HEIGHT_M),
         )
         for leaf, height in stages:
-            self.leaves.transition_profile(leaf, PRESSED_LEAF_PROFILE, duration_s)
+            self.leaves.transition_profile(leaf, CLAMPED_LEAF_PROFILE, duration_s)
             self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), duration_s)
         self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": duration_s})
 
@@ -328,19 +329,14 @@ class ProductionLine:
                 path.durations[segment] *= scale
         ascent_endpoint = endpoint_indices[4]
         path.points.insert(press_point + 1, path.points[press_point].copy())
-        path.durations.insert(press_point, PRESS_HOLD_SECONDS)
-        gather_point = press_point + 1
-        path.points.insert(gather_point + 1, path.points[gather_point].copy())
-        path.durations.insert(gather_point, TIE_HOLD_SECONDS)
-        ascent_seconds = float(sum(path.durations[gather_point + 1 : ascent_endpoint + 2]))
+        path.durations.insert(press_point, TIE_HOLD_SECONDS)
+        retract_point = press_point + 1
+        ascent_seconds = float(sum(path.durations[retract_point : ascent_endpoint + 1]))
 
         def start_press_descent():
             self._start_tie_contact_window(jar)
             self.tie_press.compress(press_descent_seconds)
             self._press_leaves(jar, press_descent_seconds)
-
-        def start_press_hold():
-            self.actions.append({"label": f"jar {jar.index} press hold", "code": 0, "hold_seconds": PRESS_HOLD_SECONDS})
 
         def start_tie_hold():
             self._record_press_stack_gap(jar)
@@ -351,20 +347,23 @@ class ProductionLine:
             self.tie_press.release(ascent_seconds)
 
         path.events.append(PathEvent(press_contact_point, f"jar {jar.index} press descent", start_press_descent))
-        path.events.append(PathEvent(press_point, f"jar {jar.index} press hold", start_press_hold))
-        path.events.append(PathEvent(gather_point, f"jar {jar.index} tie hold", start_tie_hold))
-        path.events.append(PathEvent(gather_point + 1, f"jar {jar.index} spring release", start_tie_retract))
-        path.events.append(PathEvent(ascent_endpoint + 2, f"jar {jar.index} clear tie contact window", self._finish_tie_contact_window))
+        path.events.append(PathEvent(press_point, f"jar {jar.index} tie hold", start_tie_hold))
+        path.events.append(PathEvent(retract_point, f"jar {jar.index} spring release", start_tie_retract))
+        path.events.append(PathEvent(ascent_endpoint + 1, f"jar {jar.index} clear tie contact window", self._finish_tie_contact_window))
         return path
 
     def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None):
         dt = self.model.opt.timestep
+        # Advance transitions that were started by the previous path sample
+        # before firing events at the next endpoint. This makes the clamped
+        # leaf shape finish on the exact frame that the ring descent finishes,
+        # and lets the tied profile begin on the following hold frame.
+        self.tie_press.advance(dt)
+        self.leaves.advance_transitions(dt)
         if left_path is not None:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
-        self.tie_press.advance(dt)
-        self.leaves.advance_transitions(dt)
         self.leaves.sync_roots()
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:

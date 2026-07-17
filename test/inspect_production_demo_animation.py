@@ -53,7 +53,6 @@ def main() -> None:
             "attach bottom leaf",
             "release bottom leaf",
             "press leaves",
-            "press hold",
             "gather leaves",
             "tie hold",
         ):
@@ -69,9 +68,6 @@ def main() -> None:
             raise AssertionError(f"Conveyor marker speed mismatch: {entry}")
         if entry.get("intermediate_stop_count") not in (None, 0):
             raise AssertionError(f"Robot trajectory contains visual waypoint stops: {entry}")
-    press_holds = [entry for entry in result["actions"] if entry["label"].endswith("press hold")]
-    if any(abs(entry["hold_seconds"] - 0.20) > 0.02 for entry in press_holds):
-        raise AssertionError(f"Press-ball hold should be 0.20 seconds: {press_holds}")
     holds = [entry for entry in result["actions"] if entry["label"].endswith("tie hold")]
     if any(abs(entry["hold_seconds"] - 0.5) > 0.02 for entry in holds):
         raise AssertionError(f"Tie-gun gather hold should be 0.5 seconds: {holds}")

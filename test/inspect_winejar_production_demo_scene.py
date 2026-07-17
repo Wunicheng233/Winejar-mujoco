@@ -55,10 +55,13 @@ def main() -> None:
         raise AssertionError("Tie-gun press ball must retain a physical collision volume")
     ring_plane = model.site("right_tie_gun_ring_visual_site").pos
     press_plane = model.site("right_tie_gun_press_contact_site").pos
-    if not np.allclose(ring_plane, press_plane, atol=1e-9):
-        raise AssertionError(f"Press-ball contact plane must align with tie ring: {press_plane} vs {ring_plane}")
-    if abs(float(press_ball.pos[2] + press_ball.size[0] - ring_plane[2])) > 1e-9:
-        raise AssertionError("Press-ball lower tangent must align with the tie-ring plane")
+    ring_radius = float(model.geom("right_tie_gun_closed_jaw_0").size[0])
+    ring_lower_tangent = ring_plane.copy()
+    ring_lower_tangent[2] += ring_radius
+    if not np.allclose(ring_lower_tangent, press_plane, atol=1e-9):
+        raise AssertionError(f"Press-ball bottom must align with the ring bottom: {press_plane} vs {ring_lower_tangent}")
+    if abs(float(press_ball.pos[2] + press_ball.size[0] - press_plane[2])) > 1e-9:
+        raise AssertionError("Press-ball lower tangent must align with its contact site")
     tie_gun_root = ET.parse(TIE_GUN).getroot()
     spring_fromto = {
         geom.attrib["name"]: np.fromstring(geom.attrib["fromto"], sep=" ")

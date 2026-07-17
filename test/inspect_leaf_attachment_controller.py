@@ -81,7 +81,7 @@ def main() -> None:
     if not np.all(gathered_drops < natural_drops - 10.0):
         raise AssertionError(f"Gathered profile should lower both ends, got {gathered_drops.round(2).tolist()} mm")
     pitches = endpoint_pitch_deg(model, data, jar.top_leaf)
-    if not np.all((8.0 < np.abs(pitches)) & (np.abs(pitches) < 18.0)):
+    if not np.all((15.0 < np.abs(pitches)) & (np.abs(pitches) < 28.0)):
         raise AssertionError(f"Gathered profile endpoints should lift slightly, got {pitches.round(2).tolist()} deg")
     print("Leaf attachment controller checks OK")
 
