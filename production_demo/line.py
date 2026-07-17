@@ -136,6 +136,7 @@ class ProductionLine:
         self.leaf_lotus_contacts.clear()
         self.leaves.reset()
         mujoco.mj_resetData(self.model, self.data)
+        self.clock.reset_timing()
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
         for jar in JARS:
@@ -426,6 +427,7 @@ def parse_args():
     parser.add_argument("--scene", type=Path, default=SCENE_PATH)
     parser.add_argument("--viewer", action="store_true")
     parser.add_argument("--realtime", action="store_true")
+    parser.add_argument("--playback-speed", type=float, default=1.0, help="Real-time playback multiplier; 1.0 is normal speed.")
     parser.add_argument("--hold-open", action="store_true")
     parser.add_argument("--show-debug-markers", action="store_true")
     parser.add_argument("--quiet-diagnostics", action="store_true")
@@ -433,9 +435,11 @@ def parse_args():
 
 
 def _run(model, data, viewer, args):
+    if args.playback_speed <= 0.0:
+        raise ValueError("--playback-speed must be positive")
     if not args.show_debug_markers:
         hide_debug_markers(model)
-    clock = AnimationClock(model, data, viewer=viewer, realtime=args.realtime, speed_scale=1.0)
+    clock = AnimationClock(model, data, viewer=viewer, realtime=args.realtime, speed_scale=args.playback_speed)
     diagnostics = ProductionLine(model, data, clock).run()
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
     output_path = OUTPUT_ROOT / "latest_result.json"
