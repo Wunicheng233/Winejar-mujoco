@@ -79,7 +79,8 @@ def main() -> None:
     if sorted(cover_angles) != ["1", "2", "3"]:
         raise AssertionError(f"Missing folded lotus/paper diagnostics: {cover_angles}")
     for index, angles in cover_angles.items():
-        if len(angles) != 8 or not np.allclose(angles, 1.05, atol=1e-3):
+        expected = np.asarray([1.50] * 4 + [1.45] * 4)
+        if len(angles) != 8 or not np.allclose(angles, expected, atol=1e-3):
             raise AssertionError(f"Jar {index} lotus/paper edges did not remain tied: {angles}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})

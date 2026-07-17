@@ -7,7 +7,13 @@ import numpy as np
 
 from mujoco_xarm6.production_demo.clock import AnimationClock
 from mujoco_xarm6.production_demo.constants import SCENE_PATH
-from mujoco_xarm6.production_demo.line import JARS, TIE_X, ProductionLine
+from mujoco_xarm6.production_demo.line import (
+    COVER_PAPER_TIED_ANGLE_RAD,
+    COVER_TIED_ANGLE_RAD,
+    JARS,
+    TIE_X,
+    ProductionLine,
+)
 from mujoco_xarm6.production_demo.scene_ops import freejoint_qpos_addr
 from mujoco_xarm6.production_demo.tie_press import TiePressController
 
@@ -39,6 +45,31 @@ def leaf_penetrations(model: mujoco.MjModel, data: mujoco.MjData, first_leaf: st
     for contact in data.contact[: data.ncon]:
         if {contact.geom1, contact.geom2} & first_ids and {contact.geom1, contact.geom2} & second_ids and contact.dist < -0.0005:
             pairs.append(f"{contact.geom1}:{contact.geom2}:{contact.dist:.6f}")
+    return pairs
+
+
+def cover_leaf_penetrations(model: mujoco.MjModel, data: mujoco.MjData, jar) -> list[str]:
+    cover_ids = {
+        geom_id
+        for geom_id in range(model.ngeom)
+        if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id))
+        and (name.startswith("preloaded_lotus") or name.startswith("preloaded_paper"))
+    }
+    leaf_ids = {
+        model.geom(f"{leaf}_seg_{segment:02d}_geom").id
+        for leaf in (jar.top_leaf, jar.bottom_leaf)
+        for segment in range(11)
+    }
+    pairs = []
+    for contact in data.contact[: data.ncon]:
+        if (
+            ((contact.geom1 in cover_ids and contact.geom2 in leaf_ids)
+             or (contact.geom2 in cover_ids and contact.geom1 in leaf_ids))
+            and contact.dist < -0.0005
+        ):
+            first = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, contact.geom1)
+            second = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, contact.geom2)
+            pairs.append(f"{first} <-> {second}: {contact.dist:.6f}")
     return pairs
 
 
@@ -77,6 +108,12 @@ def main() -> None:
     line._gather_leaves(jar)
     while line.leaves.profile_transitions:
         line.leaves.advance_transitions(model.opt.timestep)
+    line.cover_folds.transition(
+        jar.index,
+        COVER_TIED_ANGLE_RAD,
+        0.0,
+        paper_angle=COVER_PAPER_TIED_ANGLE_RAD,
+    )
     line.leaves.sync_roots()
     mujoco.mj_forward(model, data)
     center_geom = model.geom(f"{jar.top_leaf}_seg_05_geom")
@@ -103,6 +140,9 @@ def main() -> None:
     penetrations = leaf_penetrations(model, data, jar.top_leaf, jar.bottom_leaf)
     if penetrations:
         raise AssertionError(f"The two leaves intersect during tie gathering: {penetrations}")
+    cover_penetrations = cover_leaf_penetrations(model, data, jar)
+    if cover_penetrations:
+        raise AssertionError(f"Lotus leaf or paper intersects the bamboo-leaf stack: {cover_penetrations}")
     print("Tie press and two-leaf stack checks OK")
 
 

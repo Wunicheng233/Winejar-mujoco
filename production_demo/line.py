@@ -42,8 +42,10 @@ BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
 LEAF_GATHER_TRANSITION_SECONDS = 0.10
-COVER_CLAMPED_ANGLE_RAD = 0.65
-COVER_TIED_ANGLE_RAD = 1.05
+COVER_CLAMPED_ANGLE_RAD = 0.85
+COVER_TIED_ANGLE_RAD = 1.50
+COVER_PAPER_CLAMPED_ANGLE_RAD = 0.75
+COVER_PAPER_TIED_ANGLE_RAD = 1.45
 TIE_RING_CLEARANCE_M = 0.027
 TIE_PRESS_CONTACT_OFFSET_M = 0.017
 PRESSED_FIRST_LEAF_HEIGHT_M = 0.0235
@@ -209,7 +211,12 @@ class ProductionLine:
     def _gather_leaves(self, jar: JarSpec):
         for leaf in (jar.top_leaf, jar.bottom_leaf):
             self.leaves.transition_profile(leaf, GATHERED_LEAF_PROFILE, LEAF_GATHER_TRANSITION_SECONDS)
-        self.cover_folds.transition(jar.index, COVER_TIED_ANGLE_RAD, LEAF_GATHER_TRANSITION_SECONDS)
+        self.cover_folds.transition(
+            jar.index,
+            COVER_TIED_ANGLE_RAD,
+            LEAF_GATHER_TRANSITION_SECONDS,
+            paper_angle=COVER_PAPER_TIED_ANGLE_RAD,
+        )
         self.actions.append({"label": f"jar {jar.index} gather leaves", "code": 0, "duration_s": LEAF_GATHER_TRANSITION_SECONDS})
 
     def _press_leaves(self, jar: JarSpec, duration_s: float):
@@ -222,7 +229,12 @@ class ProductionLine:
         for leaf, height in stages:
             self.leaves.transition_profile(leaf, CLAMPED_LEAF_PROFILE, duration_s)
             self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), duration_s)
-        self.cover_folds.transition(jar.index, COVER_CLAMPED_ANGLE_RAD, duration_s)
+        self.cover_folds.transition(
+            jar.index,
+            COVER_CLAMPED_ANGLE_RAD,
+            duration_s,
+            paper_angle=COVER_PAPER_CLAMPED_ANGLE_RAD,
+        )
         self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": duration_s})
 
     def _record_press_stack_gap(self, jar: JarSpec):

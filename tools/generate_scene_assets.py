@@ -187,6 +187,65 @@ def generate_extruded_polygon(path: Path, name: str, points, thickness: float):
     write_binary_stl(path, name, triangles)
 
 
+def clip_polygon(points, axis: int, boundary: float, keep_greater: bool):
+    """Clip a convex polygon against one axis-aligned half-plane."""
+    result = []
+    for start, end in zip(points, points[1:] + points[:1]):
+        start_inside = start[axis] >= boundary if keep_greater else start[axis] <= boundary
+        end_inside = end[axis] >= boundary if keep_greater else end[axis] <= boundary
+        if start_inside:
+            result.append(start)
+        if start_inside != end_inside:
+            ratio = (boundary - start[axis]) / (end[axis] - start[axis])
+            intersection = [start[0], start[1]]
+            intersection[axis] = boundary
+            intersection[1 - axis] = start[1 - axis] + ratio * (end[1 - axis] - start[1 - axis])
+            result.append(tuple(intersection))
+    return result
+
+
+def cover_parts(points, fold_radius: float):
+    # Leave small, hidden corner reliefs between independently hinged flaps.
+    # Without them, perpendicular flaps sweep through one another while folding.
+    flap_half_width = fold_radius - 0.006
+    center = clip_polygon(points, 0, -fold_radius, True)
+    center = clip_polygon(center, 0, fold_radius, False)
+    center = clip_polygon(center, 1, -fold_radius, True)
+    center = clip_polygon(center, 1, fold_radius, False)
+    east = clip_polygon(points, 0, fold_radius, True)
+    east = clip_polygon(east, 1, -flap_half_width, True)
+    east = clip_polygon(east, 1, flap_half_width, False)
+    west = clip_polygon(points, 0, -fold_radius, False)
+    west = clip_polygon(west, 1, -flap_half_width, True)
+    west = clip_polygon(west, 1, flap_half_width, False)
+    north = clip_polygon(points, 0, -flap_half_width, True)
+    north = clip_polygon(north, 0, flap_half_width, False)
+    north = clip_polygon(north, 1, fold_radius, True)
+    south = clip_polygon(points, 0, -flap_half_width, True)
+    south = clip_polygon(south, 0, flap_half_width, False)
+    south = clip_polygon(south, 1, -fold_radius, False)
+    return {"center": center, "east": east, "west": west, "north": north, "south": south}
+
+
+def generate_segmented_cover(prefix: str, points, fold_radius: float, thickness: float):
+    offsets = {
+        "center": (0.0, 0.0),
+        "east": (fold_radius, 0.0),
+        "west": (-fold_radius, 0.0),
+        "north": (0.0, fold_radius),
+        "south": (0.0, -fold_radius),
+    }
+    for part, polygon in cover_parts(points, fold_radius).items():
+        offset = offsets[part]
+        local_points = [(x - offset[0], y - offset[1]) for x, y in polygon]
+        generate_extruded_polygon(
+            OUT_DIR / f"{prefix}_{part}.stl",
+            f"{prefix}_{part}",
+            local_points,
+            thickness,
+        )
+
+
 def generate_cropped_lotus_leaf(path: Path):
     points = [
         (-0.108, -0.055),
@@ -216,6 +275,18 @@ def main():
     generate_bamboo_leaf(OUT_DIR / "bamboo_leaf.stl")
     generate_cropped_lotus_leaf(OUT_DIR / "cropped_lotus_leaf.stl")
     generate_cropped_white_paper(OUT_DIR / "cropped_white_paper.stl")
+    generate_segmented_cover(
+        "preloaded_lotus",
+        [(-0.087, -0.054), (-0.024, -0.085), (0.079, -0.059), (0.093, 0.020), (0.026, 0.079), (-0.074, 0.051)],
+        0.044,
+        0.004,
+    )
+    generate_segmented_cover(
+        "preloaded_paper",
+        [(-0.082, -0.080), (0.078, -0.080), (0.092, 0.031), (0.014, 0.080), (-0.074, 0.031)],
+        0.048,
+        0.003,
+    )
     print(f"Generated scene assets in {OUT_DIR}")
 
 

@@ -78,18 +78,19 @@ def main() -> None:
     for index, prefix in ((1, "preloaded"), (2, "jar_02_preloaded"), (3, "jar_03_preloaded")):
         lotus_geom = model.geom(f"{prefix}_lotus_leaf_geom")
         paper_geom = model.geom(f"{prefix}_white_paper_geom")
-        for layer, geom, center_half in (("lotus", lotus_geom, 0.061), ("paper", paper_geom, 0.065)):
-            if geom.type != mujoco.mjtGeom.mjGEOM_BOX:
-                raise AssertionError(f"Jar {index} {layer} center must be a segmented box")
-            np.testing.assert_allclose(geom.size[:2], [center_half, center_half], atol=1e-9)
+        for layer, geom in (("lotus", lotus_geom), ("paper", paper_geom)):
+            if geom.type != mujoco.mjtGeom.mjGEOM_MESH:
+                raise AssertionError(f"Jar {index} {layer} center must preserve its irregular mesh outline")
+            if int(geom.dataid[0]) != model.mesh(f"preloaded_{layer}_center_mesh").id:
+                raise AssertionError(f"Jar {index} {layer} center uses the wrong segmented mesh")
         for layer in ("lotus", "paper"):
             for side in ("east", "west", "north", "south"):
                 joint = model.joint(f"{prefix}_{layer}_fold_{side}")
                 if joint.range[0] != 0.0 or joint.range[1] < 1.35:
                     raise AssertionError(f"Jar {index} {layer} {side} flap lacks its folding range")
                 flap = model.geom(f"{prefix}_{layer}_{side}_flap_geom")
-                if flap.contype == 0:
-                    raise AssertionError(f"Jar {index} {layer} {side} flap must have collision volume")
+                if flap.type != mujoco.mjtGeom.mjGEOM_MESH or flap.contype != 4:
+                    raise AssertionError(f"Jar {index} {layer} {side} flap must use an irregular leaf-colliding mesh")
 
     stack_centers = []
     for index in (1, 2, 3):
