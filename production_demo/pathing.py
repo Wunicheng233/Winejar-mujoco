@@ -47,12 +47,13 @@ class JointPathPlanner:
         start_q: np.ndarray,
         targets: list[tuple[np.ndarray, float]],
         speed: float,
+        start_yaw_deg: float,
         events: list[PathEvent] | None = None,
     ) -> JointPath:
         points = [start_q.copy()]
         current_q = start_q.copy()
         previous_tcp = self.data.site_xpos[arm.tcp_site_id].copy()
-        previous_yaw = 0.0
+        previous_yaw = float(start_yaw_deg)
         for target, yaw in targets:
             for point, point_yaw in self.cartesian_samples(previous_tcp, target, previous_yaw, yaw):
                 current_q = self._solve(arm, joint_addrs, current_q, point, point_yaw)

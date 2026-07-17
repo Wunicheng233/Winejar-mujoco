@@ -261,6 +261,10 @@ class ProductionLine:
 
     def _leaf_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.left_addrs].copy()
+        pose_code, start_pose = self.left.get_position(is_radian=False)
+        if pose_code != 0:
+            raise RuntimeError(f"Cannot read left TCP orientation before planning: {pose_code}")
+        start_yaw = float(start_pose[5])
         mouth = site_pos(self.model, self.data, jar.mouth_site)
         top_pick = site_pos(self.model, self.data, jar.top_pick_site)
         bottom_pick = site_pos(self.model, self.data, jar.bottom_pick_site)
@@ -293,13 +297,22 @@ class ProductionLine:
         append(bottom_place + np.array([0.0, 0.0, 0.025]), 90.0)
         append(np.array([-0.22, 0.52, SAFE_Z_M]), 0.0)
 
-        path = self.paths.build(f"left load jar {jar.index}", self.left, self.left_addrs, self.left_dofs, start_q, sequence, 11.0)
+        path = self.paths.build(
+            f"left load jar {jar.index}",
+            self.left,
+            self.left_addrs,
+            self.left_dofs,
+            start_q,
+            sequence,
+            11.0,
+            start_yaw_deg=start_yaw,
+        )
         # Build endpoint indices exactly from Cartesian subdivision counts.
         path.events = []
         event_ordinals = {2: events[0], 6: events[1], 10: events[2], 14: events[3]}
         point_index = 0
         previous_tcp = self.data.site_xpos[self.left.tcp_site_id].copy()
-        previous_yaw = 0.0
+        previous_yaw = start_yaw
         for index, (target, yaw) in enumerate(sequence):
             point_index += len(self.paths.cartesian_samples(previous_tcp, target, previous_yaw, yaw))
             if index in event_ordinals:
@@ -311,6 +324,10 @@ class ProductionLine:
 
     def _tie_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.right_addrs].copy()
+        pose_code, start_pose = self.right.get_position(is_radian=False)
+        if pose_code != 0:
+            raise RuntimeError(f"Cannot read right TCP orientation before planning: {pose_code}")
+        start_yaw = float(start_pose[5])
         neck = site_pos(self.model, self.data, jar.neck_site)
         ring_offset = site_pos(self.model, self.data, "right_tie_gun_center_site") - site_pos(self.model, self.data, "right_tie_gun_ring_visual_site")
         current_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
@@ -331,11 +348,20 @@ class ProductionLine:
             (ring_safe + ring_offset, 90.0),
             (station_standby, 90.0),
         ]
-        path = self.paths.build(f"right tie jar {jar.index}", self.right, self.right_addrs, self.right_dofs, start_q, targets, 11.0)
+        path = self.paths.build(
+            f"right tie jar {jar.index}",
+            self.right,
+            self.right_addrs,
+            self.right_dofs,
+            start_q,
+            targets,
+            11.0,
+            start_yaw_deg=start_yaw,
+        )
         # Work out exact target endpoint indices after Cartesian subdivision.
         point_index = 0
         previous_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
-        previous_yaw = 0.0
+        previous_yaw = start_yaw
         endpoint_indices: list[int] = []
         for target, yaw in targets:
             count = len(self.paths.cartesian_samples(previous_tcp, target, previous_yaw, yaw))
