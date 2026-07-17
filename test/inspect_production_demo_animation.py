@@ -47,7 +47,16 @@ def main() -> None:
 
     labels = [entry["label"] for entry in result["actions"]]
     for index in (1, 2, 3):
-        for event in ("attach top leaf", "release top leaf", "attach bottom leaf", "release bottom leaf", "tie hold"):
+        for event in (
+            "attach top leaf",
+            "release top leaf",
+            "attach bottom leaf",
+            "release bottom leaf",
+            "press leaves",
+            "press hold",
+            "gather leaves",
+            "tie hold",
+        ):
             expected = f"jar {index} {event}"
             if expected not in labels:
                 raise AssertionError(f"Missing production event: {expected}")
@@ -60,9 +69,12 @@ def main() -> None:
             raise AssertionError(f"Conveyor marker speed mismatch: {entry}")
         if entry.get("intermediate_stop_count") not in (None, 0):
             raise AssertionError(f"Robot trajectory contains visual waypoint stops: {entry}")
+    press_holds = [entry for entry in result["actions"] if entry["label"].endswith("press hold")]
+    if any(abs(entry["hold_seconds"] - 0.20) > 0.02 for entry in press_holds):
+        raise AssertionError(f"Press-ball hold should be 0.20 seconds: {press_holds}")
     holds = [entry for entry in result["actions"] if entry["label"].endswith("tie hold")]
     if any(abs(entry["hold_seconds"] - 0.5) > 0.02 for entry in holds):
-        raise AssertionError(f"Tie-gun overhead hold should be 0.5 seconds: {holds}")
+        raise AssertionError(f"Tie-gun gather hold should be 0.5 seconds: {holds}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
     if sorted(stack_gaps) != ["1", "2", "3"]:
@@ -70,6 +82,12 @@ def main() -> None:
     for index, gap_mm in stack_gaps.items():
         if not 4.0 <= gap_mm <= 35.0:
             raise AssertionError(f"Jar {index} leaf stack has an unsafe visual gap/intersection: {gap_mm:.1f} mm")
+    press_gaps = result.get("press_stack_gaps_mm", {})
+    if sorted(press_gaps) != ["1", "2", "3"]:
+        raise AssertionError(f"Missing press-stack diagnostics: {press_gaps}")
+    for index, gap_mm in press_gaps.items():
+        if not 3.0 <= gap_mm <= 5.0:
+            raise AssertionError(f"Jar {index} press stack should compact to 4 mm, got {gap_mm:.1f} mm")
     print("Three-jar parallel production animation checks OK")
 
 

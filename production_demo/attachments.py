@@ -20,6 +20,15 @@ class LeafProfileTransition:
 
 
 @dataclass
+class LeafRootTransition:
+    leaf: str
+    start_relative_pos: np.ndarray
+    target_relative_pos: np.ndarray
+    duration_s: float
+    elapsed: float = 0.0
+
+
+@dataclass
 class LeafRootAttachment:
     parent_body: str
     relative_pos: np.ndarray
@@ -35,11 +44,13 @@ class LeafAttachmentController:
         self.clock = clock
         self.attachments: dict[str, LeafRootAttachment] = {}
         self.profile_transitions: list[LeafProfileTransition] = []
+        self.root_transitions: list[LeafRootTransition] = []
         self.held_profiles: dict[str, np.ndarray] = {}
 
     def reset(self):
         self.attachments.clear()
         self.profile_transitions.clear()
+        self.root_transitions.clear()
         self.held_profiles.clear()
         self.clock.clear_joint_hold()
 
@@ -80,18 +91,43 @@ class LeafAttachmentController:
         self.profile_transitions[:] = [transition for transition in self.profile_transitions if transition.leaf != leaf]
         self.profile_transitions.append(LeafProfileTransition(leaf, start_profile, target_profile.copy(), duration_s))
 
-    def advance_profiles(self, dt: float) -> list[str]:
-        completed: list[str] = []
+    def transition_root_to_world(self, leaf: str, target_world_pos: np.ndarray, duration_s: float):
+        """Move a held leaf center to a press target while keeping its parent relation."""
+        attachment = self.attachments[leaf]
+        parent_id = self.model.body(attachment.parent_body).id
+        parent_pos = self.data.xpos[parent_id]
+        parent_rot = self.data.xmat[parent_id].reshape(3, 3)
+        target_relative_pos = parent_rot.T @ (target_world_pos - parent_pos)
+        self.root_transitions[:] = [transition for transition in self.root_transitions if transition.leaf != leaf]
+        if duration_s <= 0.0:
+            attachment.relative_pos = target_relative_pos
+            return
+        self.root_transitions.append(
+            LeafRootTransition(leaf, attachment.relative_pos.copy(), target_relative_pos, duration_s)
+        )
+
+    def advance_transitions(self, dt: float):
+        completed_profiles: list[str] = []
         for transition in self.profile_transitions:
             transition.elapsed = min(transition.duration_s, transition.elapsed + dt)
             alpha = smoothstep(transition.elapsed / transition.duration_s)
             self.held_profiles[transition.leaf] = transition.start_profile + (transition.target_profile - transition.start_profile) * alpha
             if transition.elapsed >= transition.duration_s:
-                completed.append(transition.leaf)
+                completed_profiles.append(transition.leaf)
         if self.profile_transitions:
-            self.profile_transitions[:] = [transition for transition in self.profile_transitions if transition.leaf not in completed]
+            self.profile_transitions[:] = [transition for transition in self.profile_transitions if transition.leaf not in completed_profiles]
             self._refresh_profile_hold()
-        return completed
+        completed_roots: list[str] = []
+        for transition in self.root_transitions:
+            transition.elapsed = min(transition.duration_s, transition.elapsed + dt)
+            alpha = smoothstep(transition.elapsed / transition.duration_s)
+            self.attachments[transition.leaf].relative_pos = (
+                transition.start_relative_pos + (transition.target_relative_pos - transition.start_relative_pos) * alpha
+            )
+            if transition.elapsed >= transition.duration_s:
+                completed_roots.append(transition.leaf)
+        if self.root_transitions:
+            self.root_transitions[:] = [transition for transition in self.root_transitions if transition.leaf not in completed_roots]
 
     def sync_roots(self):
         for leaf, attachment in self.attachments.items():
@@ -115,6 +151,7 @@ class LeafAttachmentController:
         self.attachments.pop(leaf, None)
         self.held_profiles.pop(leaf, None)
         self.profile_transitions[:] = [transition for transition in self.profile_transitions if transition.leaf != leaf]
+        self.root_transitions[:] = [transition for transition in self.root_transitions if transition.leaf != leaf]
         self._refresh_profile_hold()
 
     def leaf_center(self, leaf: str) -> np.ndarray:

@@ -48,6 +48,15 @@ def main() -> None:
         geom = model.geom(geom_name)
         if int(geom.contype[0]) == 0 or int(geom.conaffinity[0]) == 0:
             raise AssertionError(f"Tie-gun contact proxy is disabled: {geom_name}")
+    press_ball = model.geom("right_tie_gun_press_ball")
+    if int(press_ball.contype[0]) == 0 or int(press_ball.conaffinity[0]) == 0:
+        raise AssertionError("Tie-gun press ball must retain a physical collision volume")
+    ring_plane = model.site("right_tie_gun_ring_visual_site").pos
+    press_plane = model.site("right_tie_gun_press_contact_site").pos
+    if not np.allclose(ring_plane, press_plane, atol=1e-9):
+        raise AssertionError(f"Press-ball contact plane must align with tie ring: {press_plane} vs {ring_plane}")
+    if abs(float(press_ball.pos[2] + press_ball.size[0] - ring_plane[2])) > 1e-9:
+        raise AssertionError("Press-ball lower tangent must align with the tie-ring plane")
 
     for geom_name in ("preloaded_lotus_leaf_geom", "jar_02_preloaded_lotus_leaf_geom", "jar_03_preloaded_lotus_leaf_geom"):
         geom = model.geom(geom_name)

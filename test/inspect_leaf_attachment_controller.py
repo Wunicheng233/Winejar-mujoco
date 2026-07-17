@@ -75,7 +75,7 @@ def main() -> None:
 
     line.leaves.transition_profile(jar.top_leaf, GATHERED_LEAF_PROFILE, duration_s=0.25)
     while line.leaves.profile_transitions:
-        line.leaves.advance_profiles(model.opt.timestep)
+        line.leaves.advance_transitions(model.opt.timestep)
     np.testing.assert_allclose(line.leaves.bend_values(jar.top_leaf), GATHERED_LEAF_PROFILE, atol=1e-9)
     gathered_drops = end_drops_mm(model, data, jar.top_leaf)
     if not np.all(gathered_drops < natural_drops - 10.0):

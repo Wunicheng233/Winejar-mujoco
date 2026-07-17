@@ -39,6 +39,8 @@ BELT_MAX_X = 0.88
 BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
+PRESS_HOLD_SECONDS = 0.20
+LEAF_PRESS_TRANSITION_SECONDS = 0.18
 LEAF_GATHER_TRANSITION_SECONDS = 0.25
 # This is above the 0.62 m mouth-clearance envelope while remaining inside the
 # xArm's verified reachable workspace over the material table.
@@ -47,6 +49,7 @@ NATURAL_LEAF_PROFILE = np.array(
     [0.010, 0.015, 0.020, 0.025, 0.030, 0.030, 0.025, 0.020, 0.015, 0.010],
     dtype=np.float64,
 )
+PRESSED_LEAF_PROFILE = np.zeros(10, dtype=np.float64)
 GATHERED_LEAF_PROFILE = np.array(
     [-0.220, -0.160, -0.100, -0.040, 0.300, 0.300, -0.040, -0.100, -0.160, -0.220],
     dtype=np.float64,
@@ -104,6 +107,7 @@ class ProductionLine:
         self.actions: list[dict] = []
         self.exited_jars: set[int] = set()
         self.release_stack_gaps_mm: dict[str, float] = {}
+        self.press_stack_gaps_mm: dict[str, float] = {}
         self.tie_leaf_contacts: set[str] = set()
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
@@ -134,6 +138,7 @@ class ProductionLine:
     def reset(self):
         self.exited_jars.clear()
         self.release_stack_gaps_mm.clear()
+        self.press_stack_gaps_mm.clear()
         self.tie_leaf_contacts.clear()
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
@@ -183,6 +188,18 @@ class ProductionLine:
         for leaf in (jar.top_leaf, jar.bottom_leaf):
             self.leaves.transition_profile(leaf, GATHERED_LEAF_PROFILE, LEAF_GATHER_TRANSITION_SECONDS)
         self.actions.append({"label": f"jar {jar.index} gather leaves", "code": 0, "duration_s": LEAF_GATHER_TRANSITION_SECONDS})
+
+    def _press_leaves(self, jar: JarSpec):
+        mouth = site_pos(self.model, self.data, jar.mouth_site)
+        for leaf, height in ((jar.top_leaf, 0.027), (jar.bottom_leaf, 0.031)):
+            self.leaves.transition_profile(leaf, PRESSED_LEAF_PROFILE, LEAF_PRESS_TRANSITION_SECONDS)
+            self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), LEAF_PRESS_TRANSITION_SECONDS)
+        self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": LEAF_PRESS_TRANSITION_SECONDS})
+
+    def _record_press_stack_gap(self, jar: JarSpec):
+        self.press_stack_gaps_mm[str(jar.index)] = float(
+            (self.leaves.leaf_center(jar.bottom_leaf)[2] - self.leaves.leaf_center(jar.top_leaf)[2]) * 1000.0
+        )
 
     def _leaf_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.left_addrs].copy()
@@ -241,12 +258,13 @@ class ProductionLine:
         current_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
         current_safe = current_tcp.copy()
         current_safe[2] = SAFE_Z_M
-        # Keep the unmodified tie tool over the workpiece only. The neck-level
-        # closing/downward stroke will return with the redesigned actuator.
         ring_safe = neck + np.array([0.0, 0.0, 0.070])
+        ring_at_neck = neck
         station_standby = np.array([TIE_X, -0.31, SAFE_Z_M])
         targets = [
             (current_safe, 90.0),
+            (ring_safe + ring_offset, 90.0),
+            (ring_at_neck + ring_offset, 90.0),
             (ring_safe + ring_offset, 90.0),
             (station_standby, 90.0),
         ]
@@ -262,14 +280,24 @@ class ProductionLine:
             endpoint_indices.append(point_index)
             previous_tcp = target
             previous_yaw = yaw
-        overhead_point = endpoint_indices[1]
-        path.points.insert(overhead_point + 1, path.points[overhead_point].copy())
-        path.durations.insert(overhead_point, TIE_HOLD_SECONDS)
+        press_point = endpoint_indices[2]
+        path.points.insert(press_point + 1, path.points[press_point].copy())
+        path.durations.insert(press_point, PRESS_HOLD_SECONDS)
+        gather_point = press_point + 1
+        path.points.insert(gather_point + 1, path.points[gather_point].copy())
+        path.durations.insert(gather_point, TIE_HOLD_SECONDS)
+
+        def start_press_hold():
+            self._press_leaves(jar)
+            self.actions.append({"label": f"jar {jar.index} press hold", "code": 0, "hold_seconds": PRESS_HOLD_SECONDS})
+
         def start_tie_hold():
+            self._record_press_stack_gap(jar)
             self._gather_leaves(jar)
             self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})
 
-        path.events.append(PathEvent(overhead_point, f"jar {jar.index} tie hold", start_tie_hold))
+        path.events.append(PathEvent(press_point, f"jar {jar.index} press hold", start_press_hold))
+        path.events.append(PathEvent(gather_point, f"jar {jar.index} tie hold", start_tie_hold))
         return path
 
     def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None):
@@ -278,7 +306,7 @@ class ProductionLine:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
-        self.leaves.advance_profiles(dt)
+        self.leaves.advance_transitions(dt)
         self.leaves.sync_roots()
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:
@@ -407,6 +435,7 @@ class ProductionLine:
             "exited_jars": sorted(self.exited_jars),
             "leaf_heights_m": leaf_heights,
             "release_stack_gaps_mm": self.release_stack_gaps_mm,
+            "press_stack_gaps_mm": self.press_stack_gaps_mm,
             "tie_leaf_contact_pairs": sorted(self.tie_leaf_contacts),
             "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
             "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
