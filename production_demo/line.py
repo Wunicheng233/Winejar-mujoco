@@ -23,6 +23,7 @@ from mujoco_xarm6.production_demo.models import JarSpec, JointPath, PathEvent
 from mujoco_xarm6.production_demo.motion import make_left_production_arm, make_right_tie_arm
 from mujoco_xarm6.production_demo.pathing import JointPathPlanner
 from mujoco_xarm6.production_demo.scene_ops import body_id, site_pos
+from mujoco_xarm6.production_demo.tie_press import TiePressController
 
 
 LEFT_JOINTS = tuple(f"left_joint{i}" for i in range(1, 7))
@@ -42,6 +43,11 @@ TIE_HOLD_SECONDS = 0.5
 PRESS_HOLD_SECONDS = 0.20
 LEAF_PRESS_TRANSITION_SECONDS = 0.18
 LEAF_GATHER_TRANSITION_SECONDS = 0.25
+TIE_RING_CLEARANCE_M = 0.020
+TIE_PRESS_CONTACT_OFFSET_M = 0.018
+PRESSED_FIRST_LEAF_HEIGHT_M = 0.0235
+PRESSED_SECOND_LEAF_HEIGHT_M = 0.0285
+TIE_PRESS_DESCENT_SECONDS = 0.36
 # This is above the 0.62 m mouth-clearance envelope while remaining inside the
 # xArm's verified reachable workspace over the material table.
 SAFE_Z_M = 0.660
@@ -111,13 +117,21 @@ class ProductionLine:
         self.tie_leaf_contacts: set[str] = set()
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
+        self.active_tie_leaf_geom_ids: set[int] = set()
         self.leaf_lotus_contacts: set[str] = set()
         self.paths = JointPathPlanner(model, data)
         self.leaves = LeafAttachmentController(model, data, clock)
+        self.tie_press = TiePressController(model)
         self.tie_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
             if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and name.startswith("right_tie_gun_")
+        }
+        self.tie_press_geom_ids = {
+            geom_id
+            for geom_id in self.tie_geom_ids
+            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id))
+            and (name.startswith("right_tie_gun_closed_jaw_") or name.startswith("right_tie_gun_loaded_band_") or name == "right_tie_gun_press_ball")
         }
         self.leaf_geom_ids = {
             geom_id
@@ -142,8 +156,10 @@ class ProductionLine:
         self.tie_leaf_contacts.clear()
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
+        self.active_tie_leaf_geom_ids.clear()
         self.leaf_lotus_contacts.clear()
         self.leaves.reset()
+        self.tie_press.reset()
         mujoco.mj_resetData(self.model, self.data)
         self.clock.reset_timing()
         self.data.qpos[self.left_addrs] = LEFT_HOME
@@ -189,17 +205,32 @@ class ProductionLine:
             self.leaves.transition_profile(leaf, GATHERED_LEAF_PROFILE, LEAF_GATHER_TRANSITION_SECONDS)
         self.actions.append({"label": f"jar {jar.index} gather leaves", "code": 0, "duration_s": LEAF_GATHER_TRANSITION_SECONDS})
 
-    def _press_leaves(self, jar: JarSpec):
+    def _press_leaves(self, jar: JarSpec, duration_s: float):
+        """Compress both leaves during the final ring descent, without layer swaps."""
         mouth = site_pos(self.model, self.data, jar.mouth_site)
-        for leaf, height in ((jar.top_leaf, 0.027), (jar.bottom_leaf, 0.031)):
-            self.leaves.transition_profile(leaf, PRESSED_LEAF_PROFILE, LEAF_PRESS_TRANSITION_SECONDS)
-            self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), LEAF_PRESS_TRANSITION_SECONDS)
-        self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": LEAF_PRESS_TRANSITION_SECONDS})
+        stages = (
+            (jar.top_leaf, PRESSED_FIRST_LEAF_HEIGHT_M),
+            (jar.bottom_leaf, PRESSED_SECOND_LEAF_HEIGHT_M),
+        )
+        for leaf, height in stages:
+            self.leaves.transition_profile(leaf, PRESSED_LEAF_PROFILE, duration_s)
+            self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), duration_s)
+        self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": duration_s})
 
     def _record_press_stack_gap(self, jar: JarSpec):
         self.press_stack_gaps_mm[str(jar.index)] = float(
             (self.leaves.leaf_center(jar.bottom_leaf)[2] - self.leaves.leaf_center(jar.top_leaf)[2]) * 1000.0
         )
+
+    def _start_tie_contact_window(self, jar: JarSpec):
+        self.active_tie_leaf_geom_ids = {
+            self.model.geom(f"{leaf}_seg_{segment:02d}_geom").id
+            for leaf in (jar.top_leaf, jar.bottom_leaf)
+            for segment in range(11)
+        }
+
+    def _finish_tie_contact_window(self):
+        self.active_tie_leaf_geom_ids.clear()
 
     def _leaf_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.left_addrs].copy()
@@ -258,12 +289,17 @@ class ProductionLine:
         current_tcp = self.data.site_xpos[self.right.tcp_site_id].copy()
         current_safe = current_tcp.copy()
         current_safe[2] = SAFE_Z_M
+        ring_at_neck = neck + np.array([0.0, 0.0, TIE_RING_CLEARANCE_M])
+        # Keep the existing reachable safe layer. Only the final neck target is
+        # raised, so the ring stays above the leaf stack without raising the
+        # TCP beyond the right arm's verified workspace.
         ring_safe = neck + np.array([0.0, 0.0, 0.070])
-        ring_at_neck = neck
+        ring_contact = ring_at_neck + np.array([0.0, 0.0, TIE_PRESS_CONTACT_OFFSET_M])
         station_standby = np.array([TIE_X, -0.31, SAFE_Z_M])
         targets = [
             (current_safe, 90.0),
             (ring_safe + ring_offset, 90.0),
+            (ring_contact + ring_offset, 90.0),
             (ring_at_neck + ring_offset, 90.0),
             (ring_safe + ring_offset, 90.0),
             (station_standby, 90.0),
@@ -280,15 +316,30 @@ class ProductionLine:
             endpoint_indices.append(point_index)
             previous_tcp = target
             previous_yaw = yaw
-        press_point = endpoint_indices[2]
+        press_contact_point = endpoint_indices[2]
+        press_point = endpoint_indices[3]
+        raw_press_descent_seconds = float(sum(path.durations[press_contact_point:press_point]))
+        if raw_press_descent_seconds <= 0.0:
+            raise RuntimeError("Tie press descent has no motion duration")
+        press_descent_seconds = max(raw_press_descent_seconds, TIE_PRESS_DESCENT_SECONDS)
+        if press_descent_seconds > raw_press_descent_seconds:
+            scale = press_descent_seconds / raw_press_descent_seconds
+            for segment in range(press_contact_point, press_point):
+                path.durations[segment] *= scale
+        ascent_endpoint = endpoint_indices[4]
         path.points.insert(press_point + 1, path.points[press_point].copy())
         path.durations.insert(press_point, PRESS_HOLD_SECONDS)
         gather_point = press_point + 1
         path.points.insert(gather_point + 1, path.points[gather_point].copy())
         path.durations.insert(gather_point, TIE_HOLD_SECONDS)
+        ascent_seconds = float(sum(path.durations[gather_point + 1 : ascent_endpoint + 2]))
+
+        def start_press_descent():
+            self._start_tie_contact_window(jar)
+            self.tie_press.compress(press_descent_seconds)
+            self._press_leaves(jar, press_descent_seconds)
 
         def start_press_hold():
-            self._press_leaves(jar)
             self.actions.append({"label": f"jar {jar.index} press hold", "code": 0, "hold_seconds": PRESS_HOLD_SECONDS})
 
         def start_tie_hold():
@@ -296,8 +347,14 @@ class ProductionLine:
             self._gather_leaves(jar)
             self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})
 
+        def start_tie_retract():
+            self.tie_press.release(ascent_seconds)
+
+        path.events.append(PathEvent(press_contact_point, f"jar {jar.index} press descent", start_press_descent))
         path.events.append(PathEvent(press_point, f"jar {jar.index} press hold", start_press_hold))
         path.events.append(PathEvent(gather_point, f"jar {jar.index} tie hold", start_tie_hold))
+        path.events.append(PathEvent(gather_point + 1, f"jar {jar.index} spring release", start_tie_retract))
+        path.events.append(PathEvent(ascent_endpoint + 2, f"jar {jar.index} clear tie contact window", self._finish_tie_contact_window))
         return path
 
     def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None):
@@ -306,6 +363,7 @@ class ProductionLine:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
+        self.tie_press.advance(dt)
         self.leaves.advance_transitions(dt)
         self.leaves.sync_roots()
         mujoco.mj_forward(self.model, self.data)
@@ -321,6 +379,8 @@ class ProductionLine:
         makes a collision visible in the saved diagnostics instead of hiding it
         behind a purely kinematic playback.
         """
+        if not self.active_tie_leaf_geom_ids:
+            return
         for contact in self.data.contact[: self.data.ncon]:
             first_id, second_id = contact.geom1, contact.geom2
             if (
@@ -330,7 +390,7 @@ class ProductionLine:
                 first = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, first_id) or ""
                 second = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, second_id) or ""
                 self.leaf_lotus_contacts.add(" <-> ".join((first, second)))
-            if (first_id in self.tie_geom_ids and second_id in self.leaf_geom_ids) or (second_id in self.tie_geom_ids and first_id in self.leaf_geom_ids):
+            if (first_id in self.tie_press_geom_ids and second_id in self.active_tie_leaf_geom_ids) or (second_id in self.tie_press_geom_ids and first_id in self.active_tie_leaf_geom_ids):
                 first = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, first_id) or ""
                 second = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, second_id) or ""
                 names = (first, second)

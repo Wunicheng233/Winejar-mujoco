@@ -86,8 +86,11 @@ def main() -> None:
     if sorted(press_gaps) != ["1", "2", "3"]:
         raise AssertionError(f"Missing press-stack diagnostics: {press_gaps}")
     for index, gap_mm in press_gaps.items():
-        if not 3.0 <= gap_mm <= 5.0:
-            raise AssertionError(f"Jar {index} press stack should compact to 4 mm, got {gap_mm:.1f} mm")
+        if not 4.5 <= gap_mm <= 5.5:
+            raise AssertionError(f"Jar {index} press stack should keep the second leaf 5 mm above the first, got {gap_mm:.1f} mm")
+    press_moves = [entry for entry in result["actions"] if entry["label"].endswith("press leaves")]
+    if any(entry["duration_s"] < 0.34 for entry in press_moves):
+        raise AssertionError(f"Tie press descent must remain visible and synchronized: {press_moves}")
     print("Three-jar parallel production animation checks OK")
 
 
