@@ -14,6 +14,8 @@ class TieBandTransition:
     jar_index: int
     start_radius_m: float
     target_radius_m: float
+    start_exponent: float
+    target_exponent: float
     duration_s: float
     elapsed_s: float = 0.0
 
@@ -22,7 +24,9 @@ class TieBandController:
     """Shrink one white band from the tool ring onto a jar neck."""
 
     INITIAL_RADIUS_M = 0.105
-    FINAL_RADIUS_M = 0.063
+    FINAL_RADIUS_M = 0.070
+    INITIAL_EXPONENT = 2.0
+    FINAL_EXPONENT = 8.0
     BAND_RADIUS_M = 0.0022
     SEGMENT_COUNT = 16
     COLOR = np.array([0.96, 0.96, 0.93, 1.0], dtype=np.float64)
@@ -36,6 +40,7 @@ class TieBandController:
         }
         self.loaded_geom_ids = self._geom_ids("right_tie_gun_loaded_band_", padded=False)
         self.radii_m: dict[int, float] = {}
+        self.exponents: dict[int, float] = {}
         self.visible_jars: set[int] = set()
         self.transition: TieBandTransition | None = None
         self.reset()
@@ -49,6 +54,7 @@ class TieBandController:
 
     def reset(self):
         self.radii_m = {index: self.INITIAL_RADIUS_M for index in self.geom_ids_by_jar}
+        self.exponents = {index: self.INITIAL_EXPONENT for index in self.geom_ids_by_jar}
         self.visible_jars.clear()
         self.transition = None
         self.set_loaded_visible(True)
@@ -57,9 +63,11 @@ class TieBandController:
     def tighten(self, jar_index: int, duration_s: float):
         self.visible_jars.add(jar_index)
         self.radii_m[jar_index] = self.INITIAL_RADIUS_M
+        self.exponents[jar_index] = self.INITIAL_EXPONENT
         self.set_loaded_visible(False)
         if duration_s <= 0.0:
             self.radii_m[jar_index] = self.FINAL_RADIUS_M
+            self.exponents[jar_index] = self.FINAL_EXPONENT
             self.transition = None
             self.apply()
             return
@@ -67,6 +75,8 @@ class TieBandController:
             jar_index=jar_index,
             start_radius_m=self.INITIAL_RADIUS_M,
             target_radius_m=self.FINAL_RADIUS_M,
+            start_exponent=self.INITIAL_EXPONENT,
+            target_exponent=self.FINAL_EXPONENT,
             duration_s=float(duration_s),
         )
         self.apply()
@@ -81,6 +91,10 @@ class TieBandController:
             transition.start_radius_m
             + (transition.target_radius_m - transition.start_radius_m) * alpha
         )
+        self.exponents[transition.jar_index] = (
+            transition.start_exponent
+            + (transition.target_exponent - transition.start_exponent) * alpha
+        )
         self.apply()
         if transition.elapsed_s >= transition.duration_s:
             self.transition = None
@@ -94,16 +108,24 @@ class TieBandController:
     def apply(self):
         for jar_index, geom_ids in self.geom_ids_by_jar.items():
             radius = self.radii_m[jar_index]
+            exponent = self.exponents[jar_index]
             alpha = 1.0 if jar_index in self.visible_jars else 0.0
             for segment, geom_id in enumerate(geom_ids):
                 angle_a = 2.0 * np.pi * segment / self.SEGMENT_COUNT
                 angle_b = 2.0 * np.pi * (segment + 1) / self.SEGMENT_COUNT
-                start = np.array([radius * np.cos(angle_a), radius * np.sin(angle_a), 0.0])
-                end = np.array([radius * np.cos(angle_b), radius * np.sin(angle_b), 0.0])
+                start = self._superellipse_point(angle_a, radius, exponent)
+                end = self._superellipse_point(angle_b, radius, exponent)
                 self._set_capsule(geom_id, start, end)
                 self.model.geom_size[geom_id, 0] = self.BAND_RADIUS_M
                 self.model.geom_rgba[geom_id] = self.COLOR
                 self.model.geom_rgba[geom_id, 3] = alpha
+
+    @staticmethod
+    def _superellipse_point(angle: float, radius: float, exponent: float) -> np.ndarray:
+        cosine = np.cos(angle)
+        sine = np.sin(angle)
+        scale = (abs(cosine) ** exponent + abs(sine) ** exponent) ** (-1.0 / exponent)
+        return np.array([radius * cosine * scale, radius * sine * scale, 0.0])
 
     def _set_capsule(self, geom_id: int, start: np.ndarray, end: np.ndarray):
         direction = end - start

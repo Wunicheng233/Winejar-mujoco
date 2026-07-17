@@ -73,6 +73,24 @@ def cover_leaf_penetrations(model: mujoco.MjModel, data: mujoco.MjData, jar) -> 
     return pairs
 
 
+def band_leaf_penetrations(model: mujoco.MjModel, data: mujoco.MjData, line: ProductionLine, jar) -> list[str]:
+    band_ids = line.tie_bands.geom_ids_by_jar[jar.index]
+    leaf_ids = [
+        model.geom(f"{leaf}_seg_{segment:02d}_geom").id
+        for leaf in (jar.top_leaf, jar.bottom_leaf)
+        for segment in range(11)
+    ]
+    pairs = []
+    for band_id in band_ids:
+        for leaf_id in leaf_ids:
+            distance = mujoco.mj_geomDistance(model, data, band_id, leaf_id, 0.020, None)
+            if distance < -0.0005:
+                band = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, band_id)
+                leaf = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, leaf_id)
+                pairs.append(f"{band} <-> {leaf}: {distance:.6f}")
+    return pairs
+
+
 def main() -> None:
     model = mujoco.MjModel.from_xml_path(str(SCENE_PATH))
     data = mujoco.MjData(model)
@@ -114,6 +132,7 @@ def main() -> None:
         0.0,
         paper_angle=COVER_PAPER_TIED_ANGLE_RAD,
     )
+    line.tie_bands.tighten(jar.index, 0.0)
     line.leaves.sync_roots()
     mujoco.mj_forward(model, data)
     center_geom = model.geom(f"{jar.top_leaf}_seg_05_geom")
@@ -143,6 +162,9 @@ def main() -> None:
     cover_penetrations = cover_leaf_penetrations(model, data, jar)
     if cover_penetrations:
         raise AssertionError(f"Lotus leaf or paper intersects the bamboo-leaf stack: {cover_penetrations}")
+    band_penetrations = band_leaf_penetrations(model, data, line, jar)
+    if band_penetrations:
+        raise AssertionError(f"Final white cable tie must remain outside the bamboo leaves: {band_penetrations}")
     print("Tie press and two-leaf stack checks OK")
 
 

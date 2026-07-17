@@ -66,7 +66,7 @@ def cover_layer(index: int, layer: str, z: float, yaw: float, material: str) -> 
 
 def final_tie_band(index: int) -> str:
     geoms = []
-    radius = 0.063
+    radius = 0.070
     for segment in range(16):
         angle_a = 2.0 * math.pi * segment / 16
         angle_b = 2.0 * math.pi * (segment + 1) / 16
@@ -79,7 +79,7 @@ def final_tie_band(index: int) -> str:
             'rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>'
         )
     return (
-        f'      <body name="jar_{index:02d}_final_tie_band_visual" pos="0 0 0.452">\n'
+        f'      <body name="jar_{index:02d}_final_tie_band_visual" pos="0 0 0.455">\n'
         + "\n".join(geoms)
         + "\n      </body>"
     )

@@ -84,7 +84,7 @@ def main() -> None:
             raise AssertionError(f"Jar {index} lotus/paper edges did not remain tied: {angles}")
 
     band_radii = result.get("final_tie_band_radii_m", {})
-    if sorted(band_radii) != ["1", "2", "3"] or not np.allclose(list(band_radii.values()), 0.063, atol=1e-6):
+    if sorted(band_radii) != ["1", "2", "3"] or not np.allclose(list(band_radii.values()), 0.070, atol=1e-6):
         raise AssertionError(f"All three jars must retain a tightened white cable tie: {band_radii}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
@@ -102,6 +102,10 @@ def main() -> None:
     press_moves = [entry for entry in result["actions"] if entry["label"].endswith("press leaves")]
     if any(entry["duration_s"] < 0.34 for entry in press_moves):
         raise AssertionError(f"Tie press descent must remain visible and synchronized: {press_moves}")
+    if result.get("tie_leaf_penetration_pairs"):
+        raise AssertionError(f"Tie mechanism must not pass through the bamboo leaves: {result['tie_leaf_penetration_pairs']}")
+    if result.get("tie_leaf_min_distance_m", 0.0) < -0.0005:
+        raise AssertionError(f"Tie contact penetrated the leaf stack: {result['tie_leaf_min_distance_m']:.6f} m")
     print("Three-jar parallel production animation checks OK")
 
 

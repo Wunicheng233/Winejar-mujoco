@@ -48,7 +48,7 @@ COVER_TIED_ANGLE_RAD = 1.50
 COVER_PAPER_CLAMPED_ANGLE_RAD = 0.75
 COVER_PAPER_TIED_ANGLE_RAD = 1.45
 TIE_RING_CLEARANCE_M = 0.027
-TIE_PRESS_CONTACT_OFFSET_M = 0.017
+TIE_PRESS_CONTACT_OFFSET_M = 0.047
 PRESSED_FIRST_LEAF_HEIGHT_M = 0.0235
 PRESSED_SECOND_LEAF_HEIGHT_M = 0.0285
 TIE_PRESS_DESCENT_SECONDS = 0.36
@@ -60,7 +60,7 @@ NATURAL_LEAF_PROFILE = np.array(
     dtype=np.float64,
 )
 CLAMPED_LEAF_PROFILE = np.array(
-    [-0.08, -0.06, -0.03, 0.18, 0.08, 0.08, 0.18, -0.03, -0.06, -0.08],
+    [0.0, 0.0, -0.78, 0.78, 0.0, 0.0, 0.78, -0.78, 0.0, 0.0],
     dtype=np.float64,
 )
 GATHERED_LEAF_PROFILE = np.array(
@@ -124,6 +124,8 @@ class ProductionLine:
         self.tie_leaf_contacts: set[str] = set()
         self.tie_leaf_penetrations: set[str] = set()
         self.tie_leaf_contact_samples: list[dict] = []
+        self.tie_leaf_min_distance_m = 0.0
+        self.tie_leaf_worst_contact: dict | None = None
         self.active_tie_leaf_geom_ids: set[int] = set()
         self.leaf_lotus_contacts: set[str] = set()
         self.paths = JointPathPlanner(model, data)
@@ -165,6 +167,8 @@ class ProductionLine:
         self.tie_leaf_contacts.clear()
         self.tie_leaf_penetrations.clear()
         self.tie_leaf_contact_samples.clear()
+        self.tie_leaf_min_distance_m = 0.0
+        self.tie_leaf_worst_contact = None
         self.active_tie_leaf_geom_ids.clear()
         self.leaf_lotus_contacts.clear()
         self.leaves.reset()
@@ -434,6 +438,17 @@ class ProductionLine:
                         }
                     )
                 self.tie_leaf_contacts.add(pair)
+                if float(contact.dist) < self.tie_leaf_min_distance_m:
+                    self.tie_leaf_min_distance_m = float(contact.dist)
+                    self.tie_leaf_worst_contact = {
+                        "time_s": round(float(self.data.time), 4),
+                        "pair": pair,
+                        "distance_m": float(contact.dist),
+                        "ring_pos_m": self.data.site_xpos[
+                            self.model.site("right_tie_gun_ring_visual_site").id
+                        ].round(5).tolist(),
+                        "spring_compression_m": self.tie_press.compression_m,
+                    }
                 if float(contact.dist) < -0.0005:
                     self.tie_leaf_penetrations.add(pair)
 
@@ -529,6 +544,8 @@ class ProductionLine:
             "tie_leaf_contact_pairs": sorted(self.tie_leaf_contacts),
             "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
             "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
+            "tie_leaf_min_distance_m": self.tie_leaf_min_distance_m,
+            "tie_leaf_worst_contact": self.tie_leaf_worst_contact,
             "final_tie_band_radii_m": {str(index): radius for index, radius in self.tie_bands.radii_m.items()},
             "leaf_lotus_contact_pairs": sorted(self.leaf_lotus_contacts),
             "cover_fold_angles_rad": {

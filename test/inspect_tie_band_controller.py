@@ -43,10 +43,14 @@ def main() -> None:
     midpoint_radius = controller.radii_m[1]
     if not controller.FINAL_RADIUS_M < midpoint_radius < initial_radius:
         raise AssertionError(f"Tie radius did not shrink continuously: {midpoint_radius}")
+    if not controller.INITIAL_EXPONENT < controller.exponents[1] < controller.FINAL_EXPONENT:
+        raise AssertionError("Tie band did not conform progressively around the crossed leaves")
     while controller.transition is not None:
         controller.advance(0.002)
     if abs(controller.radii_m[1] - controller.FINAL_RADIUS_M) > 1e-9:
         raise AssertionError("Tie band did not finish against the jar neck")
+    if abs(controller.exponents[1] - controller.FINAL_EXPONENT) > 1e-9:
+        raise AssertionError("Finished tie band must retain its rounded-square material envelope")
     if np.any(model.geom_rgba[list(first_band), 3] != 1.0):
         raise AssertionError("Finished tie band must remain on the jar")
     assert_closed_band(model, first_band)

@@ -31,7 +31,7 @@ class TiePressController:
     BALL_CONTACT_SITE = "right_tie_gun_press_contact_site"
     BODY_NAME = "right_tie_gun_body"
     SPRING_NAMES = tuple(f"right_tie_gun_press_spring_{index}" for index in range(4))
-    MAX_COMPRESSION_M = 0.017
+    MAX_COMPRESSION_M = 0.022
 
     def __init__(self, model: mujoco.MjModel):
         self.model = model

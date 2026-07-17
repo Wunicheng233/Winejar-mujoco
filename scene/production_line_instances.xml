@@ -251,23 +251,23 @@
       </body>
       <geom name="jar_02_mouth_support" type="cylinder" pos="0 0 0.488" size="0.130 0.002"
             rgba="0.2 0.6 0.2 0" contype="2" conaffinity="1" friction="8 3 2"/>
-      <body name="jar_02_final_tie_band_visual" pos="0 0 0.452">
-        <geom name="jar_02_final_tie_band_visual_geom_00" type="capsule" fromto="0.06300 0.00000 0.00000 0.05820 0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_01" type="capsule" fromto="0.05820 0.02411 0.00000 0.04455 0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_02" type="capsule" fromto="0.04455 0.04455 0.00000 0.02411 0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_03" type="capsule" fromto="0.02411 0.05820 0.00000 0.00000 0.06300 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_04" type="capsule" fromto="0.00000 0.06300 0.00000 -0.02411 0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_05" type="capsule" fromto="-0.02411 0.05820 0.00000 -0.04455 0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_06" type="capsule" fromto="-0.04455 0.04455 0.00000 -0.05820 0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_07" type="capsule" fromto="-0.05820 0.02411 0.00000 -0.06300 0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_08" type="capsule" fromto="-0.06300 0.00000 0.00000 -0.05820 -0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_09" type="capsule" fromto="-0.05820 -0.02411 0.00000 -0.04455 -0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_10" type="capsule" fromto="-0.04455 -0.04455 0.00000 -0.02411 -0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_11" type="capsule" fromto="-0.02411 -0.05820 0.00000 -0.00000 -0.06300 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_12" type="capsule" fromto="-0.00000 -0.06300 0.00000 0.02411 -0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_13" type="capsule" fromto="0.02411 -0.05820 0.00000 0.04455 -0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_14" type="capsule" fromto="0.04455 -0.04455 0.00000 0.05820 -0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_02_final_tie_band_visual_geom_15" type="capsule" fromto="0.05820 -0.02411 0.00000 0.06300 -0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+      <body name="jar_02_final_tie_band_visual" pos="0 0 0.455">
+        <geom name="jar_02_final_tie_band_visual_geom_00" type="capsule" fromto="0.07000 0.00000 0.00000 0.06467 0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_01" type="capsule" fromto="0.06467 0.02679 0.00000 0.04950 0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_02" type="capsule" fromto="0.04950 0.04950 0.00000 0.02679 0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_03" type="capsule" fromto="0.02679 0.06467 0.00000 0.00000 0.07000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_04" type="capsule" fromto="0.00000 0.07000 0.00000 -0.02679 0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_05" type="capsule" fromto="-0.02679 0.06467 0.00000 -0.04950 0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_06" type="capsule" fromto="-0.04950 0.04950 0.00000 -0.06467 0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_07" type="capsule" fromto="-0.06467 0.02679 0.00000 -0.07000 0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_08" type="capsule" fromto="-0.07000 0.00000 0.00000 -0.06467 -0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_09" type="capsule" fromto="-0.06467 -0.02679 0.00000 -0.04950 -0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_10" type="capsule" fromto="-0.04950 -0.04950 0.00000 -0.02679 -0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_11" type="capsule" fromto="-0.02679 -0.06467 0.00000 -0.00000 -0.07000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_12" type="capsule" fromto="-0.00000 -0.07000 0.00000 0.02679 -0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_13" type="capsule" fromto="0.02679 -0.06467 0.00000 0.04950 -0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_14" type="capsule" fromto="0.04950 -0.04950 0.00000 0.06467 -0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_02_final_tie_band_visual_geom_15" type="capsule" fromto="0.06467 -0.02679 0.00000 0.07000 -0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
       </body>
     </body>
 
@@ -328,23 +328,23 @@
       </body>
       <geom name="jar_03_mouth_support" type="cylinder" pos="0 0 0.488" size="0.130 0.002"
             rgba="0.2 0.6 0.2 0" contype="2" conaffinity="1" friction="8 3 2"/>
-      <body name="jar_03_final_tie_band_visual" pos="0 0 0.452">
-        <geom name="jar_03_final_tie_band_visual_geom_00" type="capsule" fromto="0.06300 0.00000 0.00000 0.05820 0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_01" type="capsule" fromto="0.05820 0.02411 0.00000 0.04455 0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_02" type="capsule" fromto="0.04455 0.04455 0.00000 0.02411 0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_03" type="capsule" fromto="0.02411 0.05820 0.00000 0.00000 0.06300 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_04" type="capsule" fromto="0.00000 0.06300 0.00000 -0.02411 0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_05" type="capsule" fromto="-0.02411 0.05820 0.00000 -0.04455 0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_06" type="capsule" fromto="-0.04455 0.04455 0.00000 -0.05820 0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_07" type="capsule" fromto="-0.05820 0.02411 0.00000 -0.06300 0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_08" type="capsule" fromto="-0.06300 0.00000 0.00000 -0.05820 -0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_09" type="capsule" fromto="-0.05820 -0.02411 0.00000 -0.04455 -0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_10" type="capsule" fromto="-0.04455 -0.04455 0.00000 -0.02411 -0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_11" type="capsule" fromto="-0.02411 -0.05820 0.00000 -0.00000 -0.06300 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_12" type="capsule" fromto="-0.00000 -0.06300 0.00000 0.02411 -0.05820 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_13" type="capsule" fromto="0.02411 -0.05820 0.00000 0.04455 -0.04455 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_14" type="capsule" fromto="0.04455 -0.04455 0.00000 0.05820 -0.02411 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
-        <geom name="jar_03_final_tie_band_visual_geom_15" type="capsule" fromto="0.05820 -0.02411 0.00000 0.06300 -0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+      <body name="jar_03_final_tie_band_visual" pos="0 0 0.455">
+        <geom name="jar_03_final_tie_band_visual_geom_00" type="capsule" fromto="0.07000 0.00000 0.00000 0.06467 0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_01" type="capsule" fromto="0.06467 0.02679 0.00000 0.04950 0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_02" type="capsule" fromto="0.04950 0.04950 0.00000 0.02679 0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_03" type="capsule" fromto="0.02679 0.06467 0.00000 0.00000 0.07000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_04" type="capsule" fromto="0.00000 0.07000 0.00000 -0.02679 0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_05" type="capsule" fromto="-0.02679 0.06467 0.00000 -0.04950 0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_06" type="capsule" fromto="-0.04950 0.04950 0.00000 -0.06467 0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_07" type="capsule" fromto="-0.06467 0.02679 0.00000 -0.07000 0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_08" type="capsule" fromto="-0.07000 0.00000 0.00000 -0.06467 -0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_09" type="capsule" fromto="-0.06467 -0.02679 0.00000 -0.04950 -0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_10" type="capsule" fromto="-0.04950 -0.04950 0.00000 -0.02679 -0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_11" type="capsule" fromto="-0.02679 -0.06467 0.00000 -0.00000 -0.07000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_12" type="capsule" fromto="-0.00000 -0.07000 0.00000 0.02679 -0.06467 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_13" type="capsule" fromto="0.02679 -0.06467 0.00000 0.04950 -0.04950 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_14" type="capsule" fromto="0.04950 -0.04950 0.00000 0.06467 -0.02679 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
+        <geom name="jar_03_final_tie_band_visual_geom_15" type="capsule" fromto="0.06467 -0.02679 0.00000 0.07000 -0.00000 0.00000" size="0.0022" rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>
       </body>
     </body>
   </worldbody>
