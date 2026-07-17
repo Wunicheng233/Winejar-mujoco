@@ -8,6 +8,7 @@ import numpy as np
 from mujoco_xarm6.production_demo.clock import AnimationClock
 from mujoco_xarm6.production_demo.constants import SCENE_PATH
 from mujoco_xarm6.production_demo.line import JARS, TIE_X, ProductionLine
+from mujoco_xarm6.production_demo.scene_ops import freejoint_qpos_addr
 from mujoco_xarm6.production_demo.tie_press import TiePressController
 
 
@@ -60,6 +61,10 @@ def main() -> None:
     line.reset()
     jar = JARS[0]
     model.body_pos[model.body(jar.body).id] = np.array([TIE_X, 0.05, 0.125])
+    second_leaf_addr = freejoint_qpos_addr(model, f"{jar.bottom_leaf}_freejoint")
+    data.qpos[second_leaf_addr + 3 : second_leaf_addr + 7] = np.array(
+        [np.cos(np.pi / 4.0), 0.0, 0.0, np.sin(np.pi / 4.0)]
+    )
     mujoco.mj_forward(model, data)
     for leaf, weld in ((jar.top_leaf, jar.top_mouth_weld), (jar.bottom_leaf, jar.bottom_mouth_weld)):
         line.leaves.attach_root(leaf, jar.body, weld)
@@ -76,17 +81,25 @@ def main() -> None:
     mujoco.mj_forward(model, data)
     center_geom = model.geom(f"{jar.top_leaf}_seg_05_geom")
     leaf_width_mm = float(center_geom.size[1] * 2.0 * 1000.0)
-    if abs(leaf_width_mm - 120.0) > 0.01:
-        raise AssertionError(f"Leaf center must match the 120 mm jar mouth, got {leaf_width_mm:.3f} mm")
+    if abs(leaf_width_mm - 110.0) > 0.01:
+        raise AssertionError(f"Leaf center must cover the 110 mm ceramic disk, got {leaf_width_mm:.3f} mm")
     root = data.xpos[model.body(f"{jar.top_leaf}_seg_05").id]
-    inner = data.xpos[model.body(f"{jar.top_leaf}_seg_06").id]
-    outer = data.xpos[model.body(f"{jar.top_leaf}_seg_07").id]
-    fold_radius_mm = float(np.linalg.norm(((inner + outer) * 0.5 - root)[:2]) * 1000.0)
-    outer_drop_mm = float((root[2] - outer[2]) * 1000.0)
+    fold_joint = model.joint(f"{jar.top_leaf}_bend_07").id
+    if model.jnt_range[fold_joint, 1] < 1.48:
+        raise AssertionError("Leaf bend limit must permit the near-right-angle tie profile")
+    fold_radius_mm = float(np.linalg.norm((data.xanchor[fold_joint] - root)[:2]) * 1000.0)
+    folded_segment = model.body(f"{jar.top_leaf}_seg_07").id
+    folded_rotation = data.xmat[folded_segment].reshape(3, 3)
+    fold_angle_deg = abs(float(np.degrees(np.arctan2(-folded_rotation[2, 0], folded_rotation[0, 0]))))
     if not 55.0 <= fold_radius_mm <= 60.0:
         raise AssertionError(f"Tie fold must sit at the jar-mouth radius, got {fold_radius_mm:.3f} mm")
-    if not 6.0 <= outer_drop_mm <= 10.0:
-        raise AssertionError(f"Leaf must turn down directly outside the mouth, got {outer_drop_mm:.3f} mm")
+    if not 82.0 <= fold_angle_deg <= 88.0:
+        raise AssertionError(f"Leaf must turn almost vertically beside the neck, got {fold_angle_deg:.3f} degrees")
+    for segment in (8, 9, 10):
+        rotation = data.xmat[model.body(f"{jar.top_leaf}_seg_{segment:02d}").id].reshape(3, 3)
+        pitch_deg = abs(float(np.degrees(np.arctan2(-rotation[2, 0], rotation[0, 0]))))
+        if pitch_deg > 1.0:
+            raise AssertionError(f"Leaf outer segment {segment} must finish horizontally, got {pitch_deg:.3f} degrees")
     penetrations = leaf_penetrations(model, data, jar.top_leaf, jar.bottom_leaf)
     if penetrations:
         raise AssertionError(f"The two leaves intersect during tie gathering: {penetrations}")

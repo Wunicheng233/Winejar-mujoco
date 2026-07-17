@@ -14,9 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "scene" / "compliant_bamboo_leaf_pair.xml"
 HALF_SEGMENT = 0.02138
 PITCH = 0.03818
-# The 120 mm center width matches the jar mouth's outer diameter.  Keeping the
-# original taper avoids excess overlap where the two crossed leaves bend down.
-WIDTHS = (0.01440, 0.02880, 0.04087, 0.05040, 0.05704, 0.06000, 0.05704, 0.05040, 0.04087, 0.02880, 0.01440)
+BEND_LIMIT_RAD = 1.57
+# The 110 mm center width covers the ceramic disk while leaving 5 mm clearance
+# per side inside the 120 mm jar mouth.  The clearance prevents the crossed
+# leaves from intersecting where both turn down beside the neck.
+WIDTHS = (0.01320, 0.02640, 0.03670, 0.04130, 0.04580, 0.05500, 0.04580, 0.04130, 0.03670, 0.02640, 0.01320)
 
 
 def indent(lines: list[str], spaces: int) -> list[str]:
@@ -41,7 +43,8 @@ def branch(prefix: str, material: str, indices: list[int], direction: float, joi
             [
                 f'<body name="{prefix}_seg_{index:02d}" pos="{direction * PITCH:.5f} 0 0">',
                 f'<joint name="{prefix}_bend_{joint_number:02d}" type="hinge" axis="0 {axis_y:.0f} 0" '
-                f'pos="{joint_pos:.5f} 0 0" range="-1.20 1.20" damping="0.012" stiffness="0.045" armature="0.0002" limited="true"/>',
+                f'pos="{joint_pos:.5f} 0 0" range="{-BEND_LIMIT_RAD:.2f} {BEND_LIMIT_RAD:.2f}" '
+                f'damping="0.012" stiffness="0.045" armature="0.0002" limited="true"/>',
                 geom(f"{prefix}_seg_{index:02d}", material, WIDTHS[index]),
             ]
         )

@@ -71,6 +71,9 @@ def main() -> None:
     holds = [entry for entry in result["actions"] if entry["label"].endswith("tie hold")]
     if any(abs(entry["hold_seconds"] - 0.5) > 0.02 for entry in holds):
         raise AssertionError(f"Tie-gun gather hold should be 0.5 seconds: {holds}")
+    gathers = [entry for entry in result["actions"] if entry["label"].endswith("gather leaves")]
+    if any(entry["duration_s"] > 0.12 for entry in gathers):
+        raise AssertionError(f"Tie gathering should finish promptly instead of waiting for the loading arm: {gathers}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
     if sorted(stack_gaps) != ["1", "2", "3"]:
