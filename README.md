@@ -20,7 +20,8 @@ python scripts/02_production_demo_animation.py --viewer --realtime --hold-open
 The production scene models a two-station, three-jar line: the upstream dual-
 vacuum xArm loads two crossed bamboo leaves, then the jar indexes downstream to
 the tie-gun xArm. From the second jar onward, loading and tying run on the same
-simulation clock. Paper labels are not part of this revised production flow.
+simulation clock. The preloaded lotus leaf and white paper fold around the jar
+shoulder during tying. Paper labels are not part of this revised production flow.
 
 Record a side-view preview:
 
@@ -36,6 +37,7 @@ Run commands from the repository root:
 ```bash
 PYTHONPATH=. python test/inspect_production_demo_animation.py
 PYTHONPATH=. python test/inspect_winejar_production_demo_scene.py
+PYTHONPATH=. python test/inspect_cover_fold_controller.py
 ```
 
 Generated frames, diagnostics, and videos are written under `data/` and are

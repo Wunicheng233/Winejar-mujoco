@@ -19,6 +19,7 @@ import numpy as np
 from mujoco_xarm6.production_demo.attachments import LeafAttachmentController
 from mujoco_xarm6.production_demo.clock import AnimationClock, smoothstep
 from mujoco_xarm6.production_demo.constants import OUTPUT_ROOT, SCENE_PATH
+from mujoco_xarm6.production_demo.cover_folds import CoverFoldController
 from mujoco_xarm6.production_demo.models import JarSpec, JointPath, PathEvent
 from mujoco_xarm6.production_demo.motion import make_left_production_arm, make_right_tie_arm
 from mujoco_xarm6.production_demo.pathing import JointPathPlanner
@@ -41,6 +42,8 @@ BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
 LEAF_GATHER_TRANSITION_SECONDS = 0.10
+COVER_CLAMPED_ANGLE_RAD = 0.65
+COVER_TIED_ANGLE_RAD = 1.05
 TIE_RING_CLEARANCE_M = 0.027
 TIE_PRESS_CONTACT_OFFSET_M = 0.017
 PRESSED_FIRST_LEAF_HEIGHT_M = 0.0235
@@ -122,6 +125,7 @@ class ProductionLine:
         self.leaf_lotus_contacts: set[str] = set()
         self.paths = JointPathPlanner(model, data)
         self.leaves = LeafAttachmentController(model, data, clock)
+        self.cover_folds = CoverFoldController(model, data)
         self.tie_press = TiePressController(model)
         self.tie_geom_ids = {
             geom_id
@@ -142,7 +146,7 @@ class ProductionLine:
         self.lotus_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
-            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and "preloaded_lotus_leaf" in name
+            if (name := mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)) and "preloaded_lotus" in name
         }
         self.marker_starts = {
             geom_id: model.geom_pos[geom_id].copy()
@@ -165,6 +169,7 @@ class ProductionLine:
         self.clock.reset_timing()
         self.data.qpos[self.left_addrs] = LEFT_HOME
         self.data.qpos[self.right_addrs] = RIGHT_HOME
+        self.cover_folds.reset()
         for jar in JARS:
             # Future workpieces remain outside the rendered factory until their
             # conveyor-index cycle starts.
@@ -204,6 +209,7 @@ class ProductionLine:
     def _gather_leaves(self, jar: JarSpec):
         for leaf in (jar.top_leaf, jar.bottom_leaf):
             self.leaves.transition_profile(leaf, GATHERED_LEAF_PROFILE, LEAF_GATHER_TRANSITION_SECONDS)
+        self.cover_folds.transition(jar.index, COVER_TIED_ANGLE_RAD, LEAF_GATHER_TRANSITION_SECONDS)
         self.actions.append({"label": f"jar {jar.index} gather leaves", "code": 0, "duration_s": LEAF_GATHER_TRANSITION_SECONDS})
 
     def _press_leaves(self, jar: JarSpec, duration_s: float):
@@ -216,6 +222,7 @@ class ProductionLine:
         for leaf, height in stages:
             self.leaves.transition_profile(leaf, CLAMPED_LEAF_PROFILE, duration_s)
             self.leaves.transition_root_to_world(leaf, mouth + np.array([0.0, 0.0, height]), duration_s)
+        self.cover_folds.transition(jar.index, COVER_CLAMPED_ANGLE_RAD, duration_s)
         self.actions.append({"label": f"jar {jar.index} press leaves", "code": 0, "duration_s": duration_s})
 
     def _record_press_stack_gap(self, jar: JarSpec):
@@ -360,15 +367,20 @@ class ProductionLine:
         # and lets the tied profile begin on the following hold frame.
         self.tie_press.advance(dt)
         self.leaves.advance_transitions(dt)
+        self.cover_folds.advance(dt)
         if left_path is not None:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
-        self.leaves.sync_roots()
-        mujoco.mj_forward(self.model, self.data)
+        self._sync_materials()
         if right_path is not None:
             self._audit_tie_leaf_contacts()
-        self.clock.step(1, after_step=self.leaves.sync_roots)
+        self.clock.step(1, after_step=self._sync_materials)
+
+    def _sync_materials(self):
+        self.leaves.sync_roots()
+        self.cover_folds.apply(exclude=set(self.cover_folds.transitions))
+        mujoco.mj_forward(self.model, self.data)
 
     def _audit_tie_leaf_contacts(self):
         """Record every physical contact between the tie gun and leaf stack.
@@ -499,6 +511,9 @@ class ProductionLine:
             "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
             "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
             "leaf_lotus_contact_pairs": sorted(self.leaf_lotus_contacts),
+            "cover_fold_angles_rad": {
+                str(jar.index): self.cover_folds.angles(jar.index).round(5).tolist() for jar in JARS
+            },
             "actions": self.actions,
             "parallel_stations": [
                 {"left": "load jar 2", "right": "tie jar 1"},

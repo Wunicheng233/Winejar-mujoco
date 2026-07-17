@@ -36,24 +36,62 @@ def renamed_leaf_pair(index: int, bottom_z: float, top_z: float) -> str:
     return text
 
 
+def cover_layer(index: int, layer: str, z: float, yaw: float, material: str, thickness: float) -> str:
+    prefix = f"jar_{index:02d}_preloaded_{layer}"
+    body_name = f"jar_{index:02d}_preloaded_{'lotus_leaf' if layer == 'lotus' else 'white_paper'}"
+    mass_scale = 1.0 if layer == "lotus" else 0.5
+    if layer == "lotus":
+        center_half, outer_x, outer_y = 0.0610, 0.0900, 0.0830
+    else:
+        center_half, outer_x, outer_y = 0.0650, 0.0870, 0.0800
+    flap_x = (outer_x - center_half) / 2.0
+    flap_y = (outer_y - center_half) / 2.0
+    body_x = center_half + flap_x
+    body_y = center_half + flap_y
+    return f'''      <body name="{body_name}" pos="0 0 {z:.3f}" euler="0 0 {yaw:.2f}">
+        <geom name="{body_name}_geom" type="box" size="{center_half:.4f} {center_half:.4f} {thickness:.4f}" material="{material}" mass="{0.008 * mass_scale:.4f}" friction="2 1 1" contype="1" conaffinity="5"/>
+        <body name="{prefix}_east_flap" pos="{body_x:.4f} 0 0">
+          <joint name="{prefix}_fold_east" type="hinge" axis="0 1 0" pos="{-flap_x:.4f} 0 0" range="0 1.57" limited="true" damping="0.01"/>
+          <geom name="{prefix}_east_flap_geom" type="box" size="{flap_x:.4f} {center_half:.4f} {thickness:.4f}" material="{material}" mass="{0.003 * mass_scale:.4f}" friction="2 1 1" contype="1" conaffinity="5"/>
+        </body>
+        <body name="{prefix}_west_flap" pos="{-body_x:.4f} 0 0">
+          <joint name="{prefix}_fold_west" type="hinge" axis="0 -1 0" pos="{flap_x:.4f} 0 0" range="0 1.57" limited="true" damping="0.01"/>
+          <geom name="{prefix}_west_flap_geom" type="box" size="{flap_x:.4f} {center_half:.4f} {thickness:.4f}" material="{material}" mass="{0.003 * mass_scale:.4f}" friction="2 1 1" contype="1" conaffinity="5"/>
+        </body>
+        <body name="{prefix}_north_flap" pos="0 {body_y:.4f} 0">
+          <joint name="{prefix}_fold_north" type="hinge" axis="-1 0 0" pos="0 {-flap_y:.4f} 0" range="0 1.57" limited="true" damping="0.01"/>
+          <geom name="{prefix}_north_flap_geom" type="box" size="{center_half:.4f} {flap_y:.4f} {thickness:.4f}" material="{material}" mass="{0.002 * mass_scale:.4f}" friction="2 1 1" contype="1" conaffinity="5"/>
+        </body>
+        <body name="{prefix}_south_flap" pos="0 {-body_y:.4f} 0">
+          <joint name="{prefix}_fold_south" type="hinge" axis="1 0 0" pos="0 {flap_y:.4f} 0" range="0 1.57" limited="true" damping="0.01"/>
+          <geom name="{prefix}_south_flap_geom" type="box" size="{center_half:.4f} {flap_y:.4f} {thickness:.4f}" material="{material}" mass="{0.002 * mass_scale:.4f}" friction="2 1 1" contype="1" conaffinity="5"/>
+        </body>
+      </body>'''
+
+
 def jar_body(index: int) -> str:
     jar = f"station_wine_jar_{index:02d}"
+    covers = "\n".join(
+        (
+            cover_layer(index, "lotus", 0.462, 0.15, "lotus_mat", 0.0020),
+            cover_layer(index, "paper", 0.467, 0.15, "paper_mat", 0.0015),
+        )
+    )
     return f'''    <body name="{jar}" pos="-2.40 0.05 0.125">
       <geom name="{jar}_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat" contype="0" conaffinity="0"/>
       <geom name="{jar}_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
             material="jar_collision_mat" mass="8" friction="1 1 1" contype="2" conaffinity="1"/>
-      <geom name="{jar}_shoulder_collision" type="cylinder" pos="0 0 0.405" size="0.11 0.055"
-            material="jar_collision_mat" mass="2" friction="1 1 1" contype="2" conaffinity="1"/>
+      <geom name="{jar}_shoulder_lower_collision" type="cylinder" pos="0 0 0.420" size="0.097 0.010"
+            material="jar_collision_mat" mass="1" friction="1 1 1" contype="2" conaffinity="1"/>
+      <geom name="{jar}_shoulder_middle_collision" type="cylinder" pos="0 0 0.43375" size="0.071 0.00375"
+            material="jar_collision_mat" mass="0.5" friction="1 1 1" contype="2" conaffinity="1"/>
+      <geom name="{jar}_shoulder_upper_collision" type="cylinder" pos="0 0 0.44125" size="0.068 0.00375"
+            material="jar_collision_mat" mass="0.5" friction="1 1 1" contype="2" conaffinity="1"/>
       <geom name="{jar}_neck_collision" type="cylinder" pos="0 0 0.4525" size="0.06 0.0075"
             material="jar_collision_mat" mass="1" friction="1 1 1" contype="2" conaffinity="1"/>
       <site name="jar_{index:02d}_mouth_center" pos="0 0 0.46" type="sphere" size="0.010" rgba="1 0 0 0"/>
       <site name="jar_{index:02d}_neck_tie_target" pos="0 0 0.452" type="sphere" size="0.010" rgba="0 0.7 1 0"/>
-      <body name="jar_{index:02d}_preloaded_lotus_leaf" pos="0 0 0.462" euler="0 0 0.42">
-        <geom name="jar_{index:02d}_preloaded_lotus_leaf_geom" type="mesh" mesh="cropped_lotus_leaf_tie_safe_mesh" material="lotus_mat" mass="0.02" friction="1 1 1"/>
-      </body>
-      <body name="jar_{index:02d}_preloaded_white_paper" pos="0 0 0.467" euler="0 0 -0.18">
-        <geom name="jar_{index:02d}_preloaded_white_paper_geom" type="mesh" mesh="cropped_white_paper_mesh" material="paper_mat" mass="0.01" friction="1 1 1"/>
-      </body>
+{covers}
       <body name="jar_{index:02d}_preloaded_ceramic_disc" pos="0 0 0.476">
         <geom name="jar_{index:02d}_preloaded_ceramic_disc_geom" type="cylinder" size="0.055 0.006" material="ceramic_mat" mass="0.20" friction="1 1 1"/>
       </body>

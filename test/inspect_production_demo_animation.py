@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import mujoco
+import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +75,12 @@ def main() -> None:
     gathers = [entry for entry in result["actions"] if entry["label"].endswith("gather leaves")]
     if any(entry["duration_s"] > 0.12 for entry in gathers):
         raise AssertionError(f"Tie gathering should finish promptly instead of waiting for the loading arm: {gathers}")
+    cover_angles = result.get("cover_fold_angles_rad", {})
+    if sorted(cover_angles) != ["1", "2", "3"]:
+        raise AssertionError(f"Missing folded lotus/paper diagnostics: {cover_angles}")
+    for index, angles in cover_angles.items():
+        if len(angles) != 8 or not np.allclose(angles, 1.05, atol=1e-3):
+            raise AssertionError(f"Jar {index} lotus/paper edges did not remain tied: {angles}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
     if sorted(stack_gaps) != ["1", "2", "3"]:
