@@ -71,10 +71,10 @@
                     <!-- The ball reaches the same lower plane as the tie ring. Its
                          visible spring is deliberately non-colliding; the ball is the
                          single contact surface used to press the leaf stack. -->
-                    <geom name="right_tie_gun_press_spring_0" type="capsule" fromto="-0.010 0 0.128 0.010 0 0.134" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_1" type="capsule" fromto="0.010 0 0.134 -0.010 0 0.140" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_2" type="capsule" fromto="-0.010 0 0.140 0.010 0 0.146" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
-                    <geom name="right_tie_gun_press_spring_3" type="capsule" fromto="0.010 0 0.146 0.000 0 0.152" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_0" type="capsule" fromto="-0.010 0 0.126 0.010 0 0.135" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_1" type="capsule" fromto="0.010 0 0.135 -0.010 0 0.144" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_2" type="capsule" fromto="-0.010 0 0.144 0.010 0 0.153" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
+                    <geom name="right_tie_gun_press_spring_3" type="capsule" fromto="0.010 0 0.153 0.000 0 0.164" size="0.0025" material="right_gray" contype="0" conaffinity="0" />
                     <geom name="right_tie_gun_press_ball" type="sphere" pos="0 0 0.183" size="0.019" material="right_gray" mass="0.03" friction="1.2 1.0 0.4" condim="6" contype="4" conaffinity="1" />
                     <geom name="right_tie_gun_support_rod_front" type="capsule" fromto="0.000 0.036 0.126 0.000 0.088 0.196" size="0.007" material="right_black" mass="0.02" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />
                     <geom name="right_tie_gun_support_rod_back" type="capsule" fromto="0.000 -0.036 0.126 0.000 -0.088 0.196" size="0.007" material="right_black" mass="0.02" friction="0.8 0.8 0.8" contype="4" conaffinity="1" />

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import mujoco
 import numpy as np
@@ -10,6 +11,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENE = ROOT / "scene" / "scene_winejar_production_demo.xml"
+TIE_GUN = ROOT / "scene" / "xarm6_right_tie_gun.xml"
 
 
 def require(model, object_type, name: str):
@@ -57,6 +59,18 @@ def main() -> None:
         raise AssertionError(f"Press-ball contact plane must align with tie ring: {press_plane} vs {ring_plane}")
     if abs(float(press_ball.pos[2] + press_ball.size[0] - ring_plane[2])) > 1e-9:
         raise AssertionError("Press-ball lower tangent must align with the tie-ring plane")
+    tie_gun_root = ET.parse(TIE_GUN).getroot()
+    spring_fromto = {
+        geom.attrib["name"]: np.fromstring(geom.attrib["fromto"], sep=" ")
+        for geom in tie_gun_root.findall(".//geom[@fromto]")
+        if geom.attrib.get("name") in {"right_tie_gun_press_spring_0", "right_tie_gun_press_spring_3"}
+    }
+    spring_start = spring_fromto["right_tie_gun_press_spring_0"][:3]
+    spring_end = spring_fromto["right_tie_gun_press_spring_3"][3:]
+    body_bottom_z = float(model.geom("right_tie_gun_body").pos[2] + model.geom("right_tie_gun_body").size[2])
+    ball_top_z = float(press_ball.pos[2] - press_ball.size[0])
+    if abs(float(spring_start[2]) - body_bottom_z) > 1e-9 or abs(float(spring_end[2]) - ball_top_z) > 1e-9:
+        raise AssertionError("Press spring must connect the body bottom directly to the press-ball top")
 
     for geom_name in ("preloaded_lotus_leaf_geom", "jar_02_preloaded_lotus_leaf_geom", "jar_03_preloaded_lotus_leaf_geom"):
         geom = model.geom(geom_name)
