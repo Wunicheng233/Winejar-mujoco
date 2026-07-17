@@ -8,6 +8,7 @@ address explicitly.
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 
@@ -63,6 +64,27 @@ def cover_layer(index: int, layer: str, z: float, yaw: float, material: str) -> 
       </body>'''
 
 
+def final_tie_band(index: int) -> str:
+    geoms = []
+    radius = 0.063
+    for segment in range(16):
+        angle_a = 2.0 * math.pi * segment / 16
+        angle_b = 2.0 * math.pi * (segment + 1) / 16
+        start = (radius * math.cos(angle_a), radius * math.sin(angle_a), 0.0)
+        end = (radius * math.cos(angle_b), radius * math.sin(angle_b), 0.0)
+        fromto = " ".join(f"{value:.5f}" for value in (*start, *end))
+        geoms.append(
+            f'        <geom name="jar_{index:02d}_final_tie_band_visual_geom_{segment:02d}" '
+            f'type="capsule" fromto="{fromto}" size="0.0022" '
+            'rgba="0.96 0.96 0.93 0" contype="0" conaffinity="0"/>'
+        )
+    return (
+        f'      <body name="jar_{index:02d}_final_tie_band_visual" pos="0 0 0.452">\n'
+        + "\n".join(geoms)
+        + "\n      </body>"
+    )
+
+
 def jar_body(index: int) -> str:
     jar = f"station_wine_jar_{index:02d}"
     covers = "\n".join(
@@ -71,6 +93,7 @@ def jar_body(index: int) -> str:
             cover_layer(index, "paper", 0.467, 0.15, "paper_mat"),
         )
     )
+    tie_band = final_tie_band(index)
     return f'''    <body name="{jar}" pos="-2.40 0.05 0.125">
       <geom name="{jar}_visual" type="mesh" mesh="wine_jar_mesh" material="jar_mat" contype="0" conaffinity="0"/>
       <geom name="{jar}_belly_collision" type="cylinder" pos="0 0 0.205" size="0.16 0.205"
@@ -91,6 +114,7 @@ def jar_body(index: int) -> str:
       </body>
       <geom name="jar_{index:02d}_mouth_support" type="cylinder" pos="0 0 0.488" size="0.130 0.002"
             rgba="0.2 0.6 0.2 0" contype="2" conaffinity="1" friction="8 3 2"/>
+{tie_band}
     </body>'''
 
 

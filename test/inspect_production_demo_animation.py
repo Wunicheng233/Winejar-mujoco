@@ -73,7 +73,7 @@ def main() -> None:
     if any(abs(entry["hold_seconds"] - 0.5) > 0.02 for entry in holds):
         raise AssertionError(f"Tie-gun gather hold should be 0.5 seconds: {holds}")
     gathers = [entry for entry in result["actions"] if entry["label"].endswith("gather leaves")]
-    if any(entry["duration_s"] > 0.12 for entry in gathers):
+    if any(entry["duration_s"] > 0.32 for entry in gathers):
         raise AssertionError(f"Tie gathering should finish promptly instead of waiting for the loading arm: {gathers}")
     cover_angles = result.get("cover_fold_angles_rad", {})
     if sorted(cover_angles) != ["1", "2", "3"]:
@@ -82,6 +82,10 @@ def main() -> None:
         expected = np.asarray([1.50] * 4 + [1.45] * 4)
         if len(angles) != 8 or not np.allclose(angles, expected, atol=1e-3):
             raise AssertionError(f"Jar {index} lotus/paper edges did not remain tied: {angles}")
+
+    band_radii = result.get("final_tie_band_radii_m", {})
+    if sorted(band_radii) != ["1", "2", "3"] or not np.allclose(list(band_radii.values()), 0.063, atol=1e-6):
+        raise AssertionError(f"All three jars must retain a tightened white cable tie: {band_radii}")
 
     stack_gaps = result.get("release_stack_gaps_mm", {})
     if sorted(stack_gaps) != ["1", "2", "3"]:

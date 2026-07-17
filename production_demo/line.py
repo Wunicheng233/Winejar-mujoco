@@ -25,6 +25,7 @@ from mujoco_xarm6.production_demo.motion import make_left_production_arm, make_r
 from mujoco_xarm6.production_demo.pathing import JointPathPlanner
 from mujoco_xarm6.production_demo.scene_ops import body_id, site_pos
 from mujoco_xarm6.production_demo.tie_press import TiePressController
+from mujoco_xarm6.production_demo.tie_bands import TieBandController
 
 
 LEFT_JOINTS = tuple(f"left_joint{i}" for i in range(1, 7))
@@ -41,7 +42,7 @@ BELT_MAX_X = 0.88
 BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
-LEAF_GATHER_TRANSITION_SECONDS = 0.10
+LEAF_GATHER_TRANSITION_SECONDS = 0.30
 COVER_CLAMPED_ANGLE_RAD = 0.85
 COVER_TIED_ANGLE_RAD = 1.50
 COVER_PAPER_CLAMPED_ANGLE_RAD = 0.75
@@ -129,6 +130,7 @@ class ProductionLine:
         self.leaves = LeafAttachmentController(model, data, clock)
         self.cover_folds = CoverFoldController(model, data)
         self.tie_press = TiePressController(model)
+        self.tie_bands = TieBandController(model)
         self.tie_geom_ids = {
             geom_id
             for geom_id in range(model.ngeom)
@@ -167,6 +169,7 @@ class ProductionLine:
         self.leaf_lotus_contacts.clear()
         self.leaves.reset()
         self.tie_press.reset()
+        self.tie_bands.reset()
         mujoco.mj_resetData(self.model, self.data)
         self.clock.reset_timing()
         self.data.qpos[self.left_addrs] = LEFT_HOME
@@ -360,10 +363,12 @@ class ProductionLine:
         def start_tie_hold():
             self._record_press_stack_gap(jar)
             self._gather_leaves(jar)
+            self.tie_bands.tighten(jar.index, LEAF_GATHER_TRANSITION_SECONDS)
             self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})
 
         def start_tie_retract():
             self.tie_press.release(ascent_seconds)
+            self.tie_bands.set_loaded_visible(True)
 
         path.events.append(PathEvent(press_contact_point, f"jar {jar.index} press descent", start_press_descent))
         path.events.append(PathEvent(press_point, f"jar {jar.index} tie hold", start_tie_hold))
@@ -378,6 +383,7 @@ class ProductionLine:
         # leaf shape finish on the exact frame that the ring descent finishes,
         # and lets the tied profile begin on the following hold frame.
         self.tie_press.advance(dt)
+        self.tie_bands.advance(dt)
         self.leaves.advance_transitions(dt)
         self.cover_folds.advance(dt)
         if left_path is not None:
@@ -392,6 +398,7 @@ class ProductionLine:
     def _sync_materials(self):
         self.leaves.sync_roots()
         self.cover_folds.apply(exclude=set(self.cover_folds.transitions))
+        self.tie_bands.apply()
         mujoco.mj_forward(self.model, self.data)
 
     def _audit_tie_leaf_contacts(self):
@@ -522,6 +529,7 @@ class ProductionLine:
             "tie_leaf_contact_pairs": sorted(self.tie_leaf_contacts),
             "tie_leaf_penetration_pairs": sorted(self.tie_leaf_penetrations),
             "tie_leaf_contact_samples": self.tie_leaf_contact_samples,
+            "final_tie_band_radii_m": {str(index): radius for index, radius in self.tie_bands.radii_m.items()},
             "leaf_lotus_contact_pairs": sorted(self.leaf_lotus_contacts),
             "cover_fold_angles_rad": {
                 str(jar.index): self.cover_folds.angles(jar.index).round(5).tolist() for jar in JARS

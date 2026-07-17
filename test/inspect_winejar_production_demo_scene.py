@@ -50,6 +50,14 @@ def main() -> None:
         geom = model.geom(geom_name)
         if int(geom.contype[0]) == 0 or int(geom.conaffinity[0]) == 0:
             raise AssertionError(f"Tie-gun contact proxy is disabled: {geom_name}")
+    for jar_index, prefix in (
+        (1, "final_tie_band_visual_geom_"),
+        (2, "jar_02_final_tie_band_visual_geom_"),
+        (3, "jar_03_final_tie_band_visual_geom_"),
+    ):
+        band_ids = [model.geom(f"{prefix}{segment:02d}").id for segment in range(16)]
+        if any(model.geom_type[geom_id] != mujoco.mjtGeom.mjGEOM_CAPSULE for geom_id in band_ids):
+            raise AssertionError(f"Jar {jar_index} final cable tie must use a continuous capsule ring")
     press_ball = model.geom("right_tie_gun_press_ball")
     if int(press_ball.contype[0]) == 0 or int(press_ball.conaffinity[0]) == 0:
         raise AssertionError("Tie-gun press ball must retain a physical collision volume")
