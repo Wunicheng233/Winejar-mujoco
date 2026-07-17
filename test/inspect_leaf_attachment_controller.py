@@ -78,8 +78,14 @@ def main() -> None:
         line.leaves.advance_transitions(model.opt.timestep)
     np.testing.assert_allclose(line.leaves.bend_values(jar.top_leaf), GATHERED_LEAF_PROFILE, atol=1e-9)
     gathered_drops = end_drops_mm(model, data, jar.top_leaf)
-    if not np.all(gathered_drops < natural_drops - 10.0):
-        raise AssertionError(f"Gathered profile should lower both ends, got {gathered_drops.round(2).tolist()} mm")
+    if not np.all((-24.0 < gathered_drops) & (gathered_drops < -15.0)):
+        raise AssertionError(f"Gathered profile should hold both ends beside the neck, got {gathered_drops.round(2).tolist()} mm")
+    root_z = data.xpos[model.body(f"{jar.top_leaf}_seg_05").id][2]
+    trough_drops = np.asarray(
+        [(data.xpos[model.body(f"{jar.top_leaf}_seg_{segment:02d}").id][2] - root_z) * 1000.0 for segment in (1, 9)]
+    )
+    if not np.all(gathered_drops > trough_drops + 5.0):
+        raise AssertionError("Gathered profile endpoints must turn upward beyond the neck-hugging troughs")
     pitches = endpoint_pitch_deg(model, data, jar.top_leaf)
     if not np.all((15.0 < np.abs(pitches)) & (np.abs(pitches) < 28.0)):
         raise AssertionError(f"Gathered profile endpoints should lift slightly, got {pitches.round(2).tolist()} deg")

@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "scene" / "compliant_bamboo_leaf_pair.xml"
 HALF_SEGMENT = 0.02138
 PITCH = 0.03818
-WIDTHS = (0.01500, 0.03000, 0.04257, 0.05250, 0.05942, 0.06250, 0.05942, 0.05250, 0.04257, 0.03000, 0.01500)
+# The 120 mm center width matches the jar mouth's outer diameter.  Keeping the
+# original taper avoids excess overlap where the two crossed leaves bend down.
+WIDTHS = (0.01440, 0.02880, 0.04087, 0.05040, 0.05704, 0.06000, 0.05704, 0.05040, 0.04087, 0.02880, 0.01440)
 
 
 def indent(lines: list[str], spaces: int) -> list[str]:

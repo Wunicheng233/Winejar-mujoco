@@ -74,6 +74,19 @@ def main() -> None:
         line.leaves.advance_transitions(model.opt.timestep)
     line.leaves.sync_roots()
     mujoco.mj_forward(model, data)
+    center_geom = model.geom(f"{jar.top_leaf}_seg_05_geom")
+    leaf_width_mm = float(center_geom.size[1] * 2.0 * 1000.0)
+    if abs(leaf_width_mm - 120.0) > 0.01:
+        raise AssertionError(f"Leaf center must match the 120 mm jar mouth, got {leaf_width_mm:.3f} mm")
+    root = data.xpos[model.body(f"{jar.top_leaf}_seg_05").id]
+    inner = data.xpos[model.body(f"{jar.top_leaf}_seg_06").id]
+    outer = data.xpos[model.body(f"{jar.top_leaf}_seg_07").id]
+    fold_radius_mm = float(np.linalg.norm(((inner + outer) * 0.5 - root)[:2]) * 1000.0)
+    outer_drop_mm = float((root[2] - outer[2]) * 1000.0)
+    if not 55.0 <= fold_radius_mm <= 60.0:
+        raise AssertionError(f"Tie fold must sit at the jar-mouth radius, got {fold_radius_mm:.3f} mm")
+    if not 6.0 <= outer_drop_mm <= 10.0:
+        raise AssertionError(f"Leaf must turn down directly outside the mouth, got {outer_drop_mm:.3f} mm")
     penetrations = leaf_penetrations(model, data, jar.top_leaf, jar.bottom_leaf)
     if penetrations:
         raise AssertionError(f"The two leaves intersect during tie gathering: {penetrations}")

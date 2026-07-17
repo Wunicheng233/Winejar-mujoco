@@ -58,7 +58,7 @@ CLAMPED_LEAF_PROFILE = np.array(
     dtype=np.float64,
 )
 GATHERED_LEAF_PROFILE = np.array(
-    [-0.55, -0.35, 0.42, 0.10, 0.0, 0.0, 0.10, 0.42, -0.35, -0.55],
+    [-0.45, -0.30, -0.08, 0.40, 0.0, 0.0, 0.40, -0.08, -0.30, -0.45],
     dtype=np.float64,
 )
 JARS = (
