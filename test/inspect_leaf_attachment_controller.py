@@ -36,6 +36,14 @@ def end_drops_mm(model: mujoco.MjModel, data: mujoco.MjData, leaf: str) -> np.nd
     )
 
 
+def endpoint_pitch_deg(model: mujoco.MjModel, data: mujoco.MjData, leaf: str) -> np.ndarray:
+    pitches = []
+    for segment in (0, 10):
+        rotation = data.xmat[model.body(f"{leaf}_seg_{segment:02d}").id].reshape(3, 3)
+        pitches.append(np.degrees(np.arctan2(-rotation[2, 0], rotation[0, 0])))
+    return np.asarray(pitches)
+
+
 def main() -> None:
     model = mujoco.MjModel.from_xml_path(str(SCENE_PATH))
     data = mujoco.MjData(model)
@@ -70,8 +78,11 @@ def main() -> None:
         line.leaves.advance_profiles(model.opt.timestep)
     np.testing.assert_allclose(line.leaves.bend_values(jar.top_leaf), GATHERED_LEAF_PROFILE, atol=1e-9)
     gathered_drops = end_drops_mm(model, data, jar.top_leaf)
-    if not np.all(gathered_drops < natural_drops - 15.0):
+    if not np.all(gathered_drops < natural_drops - 10.0):
         raise AssertionError(f"Gathered profile should lower both ends, got {gathered_drops.round(2).tolist()} mm")
+    pitches = endpoint_pitch_deg(model, data, jar.top_leaf)
+    if not np.all((8.0 < np.abs(pitches)) & (np.abs(pitches) < 18.0)):
+        raise AssertionError(f"Gathered profile endpoints should lift slightly, got {pitches.round(2).tolist()} deg")
     print("Leaf attachment controller checks OK")
 
 

@@ -48,7 +48,7 @@ NATURAL_LEAF_PROFILE = np.array(
     dtype=np.float64,
 )
 GATHERED_LEAF_PROFILE = np.array(
-    [0.200, 0.160, 0.110, 0.070, 0.025, 0.025, 0.070, 0.110, 0.160, 0.200],
+    [-0.220, -0.160, -0.100, -0.040, 0.300, 0.300, -0.040, -0.100, -0.160, -0.220],
     dtype=np.float64,
 )
 JARS = (
