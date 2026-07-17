@@ -39,12 +39,16 @@ BELT_MAX_X = 0.88
 BELT_LENGTH = BELT_MAX_X - BELT_MIN_X
 INDEX_SECONDS = 1.6
 TIE_HOLD_SECONDS = 0.5
-LEAF_PLACE_TRANSITION_SECONDS = 0.45
+LEAF_GATHER_TRANSITION_SECONDS = 0.25
 # This is above the 0.62 m mouth-clearance envelope while remaining inside the
 # xArm's verified reachable workspace over the material table.
 SAFE_Z_M = 0.660
-LEAF_PROFILE = np.array(
-    [-0.0309, -0.3253, 0.0026, 0.3692, 0.0581, 0.0039, -0.0807, 0.3311, -0.1450, -0.0060],
+NATURAL_LEAF_PROFILE = np.array(
+    [0.010, 0.015, 0.020, 0.025, 0.030, 0.030, 0.025, 0.020, 0.015, 0.010],
+    dtype=np.float64,
+)
+GATHERED_LEAF_PROFILE = np.array(
+    [0.200, 0.160, 0.110, 0.070, 0.025, 0.025, 0.070, 0.110, 0.160, 0.200],
     dtype=np.float64,
 )
 JARS = (
@@ -159,6 +163,7 @@ class ProductionLine:
         suction_weld = jar.top_suction_weld if is_top else jar.bottom_suction_weld
         self.leaves.deactivate_weld(table_weld)
         self.leaves.attach_root(leaf, "left_vacuum_end_effector", suction_weld)
+        self.leaves.set_profile(leaf, NATURAL_LEAF_PROFILE)
         self.actions.append({"label": f"jar {jar.index} attach {'top' if is_top else 'bottom'} leaf", "code": 0})
 
     def _release(self, jar: JarSpec, leaf: str):
@@ -167,17 +172,17 @@ class ProductionLine:
         mouth_weld = jar.top_mouth_weld if is_top else jar.bottom_mouth_weld
         self.leaves.deactivate_weld(suction_weld)
         mujoco.mj_forward(self.model, self.data)
-        self.leaves.begin_placement(jar, leaf, mouth_weld)
+        self.leaves.attach_root(leaf, jar.body, mouth_weld)
+        if leaf == jar.bottom_leaf:
+            self.release_stack_gaps_mm[str(jar.index)] = float(
+                (self.leaves.leaf_center(jar.bottom_leaf)[2] - self.leaves.leaf_center(jar.top_leaf)[2]) * 1000.0
+            )
         self.actions.append({"label": f"jar {jar.index} release {'top' if is_top else 'bottom'} leaf", "code": 0})
 
-    def _advance_leaf_placements(self, dt: float):
-        completed = self.leaves.advance_placements(dt, LEAF_PROFILE, LEAF_PLACE_TRANSITION_SECONDS)
-        for transition in completed:
-            if transition.leaf == transition.jar.bottom_leaf:
-                self.release_stack_gaps_mm[str(transition.jar.index)] = float(
-                    (self.leaves.leaf_center(transition.jar.bottom_leaf)[2] - self.leaves.leaf_center(transition.jar.top_leaf)[2]) * 1000.0
-                )
-            self.actions.append({"label": f"jar {transition.jar.index} complete flexible leaf placement", "code": 0})
+    def _gather_leaves(self, jar: JarSpec):
+        for leaf in (jar.top_leaf, jar.bottom_leaf):
+            self.leaves.transition_profile(leaf, GATHERED_LEAF_PROFILE, LEAF_GATHER_TRANSITION_SECONDS)
+        self.actions.append({"label": f"jar {jar.index} gather leaves", "code": 0, "duration_s": LEAF_GATHER_TRANSITION_SECONDS})
 
     def _leaf_job(self, jar: JarSpec) -> JointPath:
         start_q = self.data.qpos[self.left_addrs].copy()
@@ -260,7 +265,11 @@ class ProductionLine:
         overhead_point = endpoint_indices[1]
         path.points.insert(overhead_point + 1, path.points[overhead_point].copy())
         path.durations.insert(overhead_point, TIE_HOLD_SECONDS)
-        path.events.append(PathEvent(overhead_point, f"jar {jar.index} tie hold", lambda: self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})))
+        def start_tie_hold():
+            self._gather_leaves(jar)
+            self.actions.append({"label": f"jar {jar.index} tie hold", "code": 0, "hold_seconds": TIE_HOLD_SECONDS})
+
+        path.events.append(PathEvent(overhead_point, f"jar {jar.index} tie hold", start_tie_hold))
         return path
 
     def _step(self, left_path: JointPath | None = None, right_path: JointPath | None = None):
@@ -269,7 +278,7 @@ class ProductionLine:
             left_path.advance(self.data, dt)
         if right_path is not None:
             right_path.advance(self.data, dt)
-        self._advance_leaf_placements(dt)
+        self.leaves.advance_profiles(dt)
         self.leaves.sync_roots()
         mujoco.mj_forward(self.model, self.data)
         if right_path is not None:
