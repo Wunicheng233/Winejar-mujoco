@@ -263,8 +263,8 @@
     <camera name="front_conveyor_camera" pos="1.75 0.05 0.70"
             xyaxes="0.00000 1.00000 0.00000 -0.17987 0.00000 0.98369"
             fovy="52" resolution="1280 720"/>
-    <camera name="side_overview_camera" pos="1.06143 -0.93143 1.26054"
-            xyaxes="0.70711 0.70711 0.00000 -0.33197 0.33197 0.88295"
+    <camera name="side_overview_camera" pos="1.21351 -1.08351 1.42000"
+            xyaxes="0.70711 0.70711 0.00000 -0.35355 0.35355 0.86603"
             fovy="45" resolution="1280 720"/>
     <camera name="production_hero_camera" pos="1.25 -1.05 0.86" xyaxes="0.68 0.73 0 -0.28 0.26 0.92" fovy="42" resolution="1920 1080"/>
     <camera name="jar_mouth_closeup_camera" pos="0.38 -0.45 0.76" xyaxes="0.75 0.66 0 -0.36 0.41 0.84" fovy="32" resolution="1280 720"/>
